@@ -85,6 +85,16 @@
                                                     <MenuItem Header="Add to Group..."
                                                               Command="{Binding AddToGroupCommand}"
                                                               CommandParameter="{Binding Name}" />
+                                                    <MenuItem Header="Remove from Group"
+                                                              Command="{Binding RemoveFromGroupCommand}"
+                                                              CommandParameter="{Binding RemoveFromGroupParam}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Rename Group..."
+                                                              Command="{Binding RenameCommand}"
+                                                              CommandParameter="{Binding Name}" />
+                                                    <MenuItem Header="Delete Group"
+                                                              Command="{Binding DeleteCommand}"
+                                                              CommandParameter="{Binding Name}" />
                                                 </ContextMenu>
                                             </DockPanel.ContextMenu>
                                             <!-- Expand/collapse toggle -->

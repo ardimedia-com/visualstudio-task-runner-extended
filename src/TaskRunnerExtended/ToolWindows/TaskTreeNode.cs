@@ -86,6 +86,22 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand? AddToGroupCommand { get; set; }
 
+    /// <summary>Command to remove this task from its parent group.</summary>
+    [DataMember]
+    public IAsyncCommand? RemoveFromGroupCommand { get; set; }
+
+    /// <summary>Parameter for RemoveFromGroupCommand: "groupName|taskLabel".</summary>
+    [DataMember]
+    public string RemoveFromGroupParam { get; set; } = string.Empty;
+
+    /// <summary>Command to delete this group.</summary>
+    [DataMember]
+    public IAsyncCommand? DeleteCommand { get; set; }
+
+    /// <summary>Command to rename this group.</summary>
+    [DataMember]
+    public IAsyncCommand? RenameCommand { get; set; }
+
     /// <summary>Command to select this node (fired on right-click via vs:EventHandler).</summary>
     [DataMember]
     public IAsyncCommand? SelectCommand { get; set; }

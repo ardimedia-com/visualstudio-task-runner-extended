@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 - **Start/Stop Group**: Start all tasks in a group (parallel or sequential), stop all tasks
 - **Delete Group**: Remove groups via context menu
 - **Merge Logic**: Local groups override shared groups with the same name
+- **Rename Group**: VS input prompt for new name
+- **Remove from Group**: Remove individual tasks from a group via context menu
+- **User Prompts**: VS InputPromptOptions for group name input, PromptOptions.OKCancel for delete confirmation
+- **Dynamic Group Status**: Task icons in groups reflect running state, group CanStart/CanStop updates automatically on task status changes
 
 ### Added (Phase 2: Multi-Source)
 
