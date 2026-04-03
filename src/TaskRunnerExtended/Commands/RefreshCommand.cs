@@ -3,6 +3,8 @@ namespace TaskRunnerExtended.Commands;
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
 
+using TaskRunnerExtended.Services;
+
 /// <summary>
 /// Toolbar command: Refresh / rescan all task sources.
 /// </summary>
@@ -22,6 +24,6 @@ public class RefreshCommand : Command
 
     public override async Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)
     {
-        // TODO: trigger rescan via shared service or event
+        ToolbarActionBus.RequestRefresh();
     }
 }

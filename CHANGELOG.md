@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Phase 5: Polish)
+
+- **Empty State**: Helpful hints when no task sources are found (suggests tasks.json, package.json, .csproj)
+- **Toolbar Commands Wired**: Refresh (rescans), Stop All (stops all running tasks), Collapse All via ToolbarActionBus
+- **Bold Root Items**: "Available Configuration Files" and "Run Groups" displayed in bold
+- **Updated README**: Full feature list, usage guide, run groups documentation, technical details
+
 ### Added (Phase 4: Advanced Output)
 
 - **ProblemMatcher**: Detects errors and warnings in task output (MSBuild, TypeScript, npm, "Build FAILED" patterns)

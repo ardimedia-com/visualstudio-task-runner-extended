@@ -3,6 +3,8 @@ namespace TaskRunnerExtended.Commands;
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
 
+using TaskRunnerExtended.Services;
+
 /// <summary>
 /// Toolbar command: Stop all running tasks.
 /// </summary>
@@ -22,6 +24,6 @@ public class StopAllCommand : Command
 
     public override async Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)
     {
-        // TODO: stop all via shared TaskRunner service
+        ToolbarActionBus.RequestStopAll();
     }
 }

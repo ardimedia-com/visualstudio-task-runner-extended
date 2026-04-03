@@ -70,6 +70,10 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public bool IsTask { get; init; }
 
+    /// <summary>Font weight for root/header items: "Bold" or "Normal".</summary>
+    [DataMember]
+    public string FontWeight { get; init; } = "Normal";
+
     /// <summary>Additional info shown after the name (e.g., "(Debug)", "(Pre-Build)").</summary>
     [DataMember]
     public string Metadata { get; set; } = string.Empty;

@@ -3,6 +3,8 @@ namespace TaskRunnerExtended.Commands;
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
 
+using TaskRunnerExtended.Services;
+
 /// <summary>
 /// Toolbar command: Collapse all tree nodes.
 /// </summary>
@@ -22,6 +24,6 @@ public class CollapseAllCommand : Command
 
     public override async Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)
     {
-        // TODO: collapse all tree nodes via shared ViewModel
+        ToolbarActionBus.RequestCollapseAll();
     }
 }

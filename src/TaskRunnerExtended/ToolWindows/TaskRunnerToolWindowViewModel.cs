@@ -54,6 +54,32 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _taskRunner = new TaskRunner(extensibility);
         _taskRunner.TaskStatusChanged += OnTaskStatusChanged;
 
+        // Subscribe to toolbar actions
+        ToolbarActionBus.RefreshRequested += () =>
+        {
+            StatusText = "Refreshing...";
+            _ = Task.Run(async () =>
+            {
+                try { await OnSolutionOpenedAsync(CancellationToken.None).ConfigureAwait(false); }
+                catch { /* ignore */ }
+            });
+        };
+        ToolbarActionBus.StopAllRequested += () =>
+        {
+            StatusText = "Stopping all tasks...";
+            _ = Task.Run(async () =>
+            {
+                await _taskRunner.StopAllAsync().ConfigureAwait(false);
+                // Reset all task node statuses
+                foreach (var node in _taskNodeMap.Values)
+                {
+                    node.Status = Models.TaskStatus.Idle;
+                }
+                RefreshGroupsInTree();
+                StatusText = "All tasks stopped.";
+            });
+        };
+
         _fileWatcher = new FileWatcherService(() =>
         {
             // Re-scan when task source files change
@@ -393,7 +419,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             }
 
             var configFilesRoot = new TaskTreeNode("Available Configuration Files (Tasks)", TreeIcons.ConfigFiles)
-            { SelectCommand = SelectNodeCommand };
+            { SelectCommand = SelectNodeCommand, FontWeight = "Bold" };
             var projectDirs = await GetProjectDirectoriesAsync(cancellationToken).ConfigureAwait(false);
 
             // Discover tasks from solution directory
@@ -434,12 +460,27 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             {
                 TreeItems.Add(configFilesRoot);
             }
+            else
+            {
+                // Empty state: no tasks found
+                var emptyNode = new TaskTreeNode("No task sources found", TreeIcons.ParseError)
+                { SelectCommand = SelectNodeCommand };
+                emptyNode.Children.Add(new TaskTreeNode("Create a .vscode/tasks.json file to define tasks", "")
+                { SelectCommand = SelectNodeCommand });
+                emptyNode.Children.Add(new TaskTreeNode("Or add npm scripts to package.json", "")
+                { SelectCommand = SelectNodeCommand });
+                emptyNode.Children.Add(new TaskTreeNode("Or add MSBuild <Exec> targets to your .csproj", "")
+                { SelectCommand = SelectNodeCommand });
+                TreeItems.Add(emptyNode);
+            }
 
             // Run Groups
             BuildGroupsTree();
 
             var taskCount = CountTasks(configFilesRoot);
-            StatusText = $"Found {taskCount} task(s) from {configFilesRoot.Children.Count} source(s).";
+            StatusText = taskCount > 0
+                ? $"Found {taskCount} task(s) from {configFilesRoot.Children.Count} source(s)."
+                : "No tasks found. Add task source files to get started.";
 
             // Start watching for file changes
             var watchDirs = new List<string> { _workspaceFolder };
@@ -497,7 +538,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         }
 
         var groupsRoot = new TaskTreeNode("Run Groups", TreeIcons.RunGroups)
-        { SelectCommand = SelectNodeCommand };
+        { SelectCommand = SelectNodeCommand, FontWeight = "Bold" };
 
         if (!string.IsNullOrEmpty(_workspaceFolder))
         {

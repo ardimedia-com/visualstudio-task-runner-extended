@@ -26,6 +26,7 @@
 
                         <!-- Task/Node name -->
                         <TextBlock Text="{Binding Name, Mode=OneWay}"
+                                   FontWeight="{Binding FontWeight}"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
