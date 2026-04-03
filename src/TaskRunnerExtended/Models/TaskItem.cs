@@ -33,6 +33,15 @@ public class TaskItem
     /// <summary>Additional metadata for display (e.g., "Debug only", "Pre-Build").</summary>
     public string? Metadata { get; init; }
 
+    /// <summary>Labels of tasks this task depends on (compound task).</summary>
+    public string[] DependsOn { get; init; } = [];
+
+    /// <summary>How dependent tasks are started: "parallel" (default) or "sequence".</summary>
+    public string DependsOrder { get; init; } = "parallel";
+
+    /// <summary>Whether this is a compound task (has dependsOn, no own command).</summary>
+    public bool IsCompound => DependsOn.Length > 0 && string.IsNullOrEmpty(Command);
+
     /// <summary>Error message if this task could not be parsed correctly. Non-null = not startable.</summary>
     public string? Error { get; init; }
 

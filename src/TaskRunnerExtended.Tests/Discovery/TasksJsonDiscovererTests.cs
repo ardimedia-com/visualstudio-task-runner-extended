@@ -73,7 +73,7 @@ public class TasksJsonDiscovererTests
     }
 
     [TestMethod]
-    public async Task DiscoverAsync_CompoundTaskSkipped_InPhase1()
+    public async Task DiscoverAsync_CompoundTask_ParsedWithDependsOn()
     {
         var vscodeDir = Path.Combine(_tempDir, ".vscode");
         Directory.CreateDirectory(vscodeDir);
@@ -93,7 +93,13 @@ public class TasksJsonDiscovererTests
         var discoverer = new TasksJsonDiscoverer();
         var result = await discoverer.DiscoverAsync(_tempDir, CancellationToken.None);
 
-        Assert.AreEqual(0, result.Count, "Compound tasks without command should be skipped in Phase 1");
+        Assert.AreEqual(1, result.Count);
+        var task = result[0];
+        Assert.AreEqual("dev", task.Label);
+        Assert.IsTrue(task.IsCompound);
+        Assert.AreEqual(2, task.DependsOn.Length);
+        Assert.AreEqual("watchcss", task.DependsOn[0]);
+        Assert.AreEqual("parallel", task.DependsOrder);
     }
 
     [TestMethod]

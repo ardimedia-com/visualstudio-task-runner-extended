@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <PackageReference Include="Ardimedia.VsExtensions.Common" Version="1.0.8" />
+    <PackageReference Include="YamlDotNet" Version="16.*" />
   </ItemGroup>
 
   <ItemGroup>

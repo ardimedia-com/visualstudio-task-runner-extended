@@ -80,7 +80,44 @@ public class TasksJsonDiscoverer : ITaskDiscoverer
             ? cmdProp.GetString()!
             : string.Empty;
 
-        // Compound tasks (dependsOn without command) — skip in Phase 1
+        // dependsOn
+        string[] dependsOn = [];
+        if (element.TryGetProperty("dependsOn", out var depProp))
+        {
+            if (depProp.ValueKind == JsonValueKind.Array)
+            {
+                dependsOn = depProp.EnumerateArray()
+                    .Where(d => d.ValueKind == JsonValueKind.String)
+                    .Select(d => d.GetString()!)
+                    .ToArray();
+            }
+            else if (depProp.ValueKind == JsonValueKind.String)
+            {
+                dependsOn = [depProp.GetString()!];
+            }
+        }
+
+        var dependsOrder = element.TryGetProperty("dependsOrder", out var orderProp) &&
+                           orderProp.ValueKind == JsonValueKind.String
+            ? orderProp.GetString()!
+            : "parallel";
+
+        // Compound tasks (dependsOn without command) — return as compound
+        if (string.IsNullOrEmpty(command) && dependsOn.Length > 0)
+        {
+            return new TaskItem
+            {
+                Label = label,
+                Command = string.Empty,
+                DependsOn = dependsOn,
+                DependsOrder = dependsOrder,
+                WorkingDirectory = directory,
+                Source = source,
+                Metadata = $"compound: {string.Join(" + ", dependsOn)}",
+            };
+        }
+
+        // No command and no dependsOn — skip
         if (string.IsNullOrEmpty(command))
         {
             return null;
@@ -136,6 +173,8 @@ public class TasksJsonDiscoverer : ITaskDiscoverer
             WorkingDirectory = cwd ?? directory,
             IsShell = isShell,
             TaskType = isBackground ? Models.TaskType.Background : Models.TaskType.Normal,
+            DependsOn = dependsOn,
+            DependsOrder = dependsOrder,
             Source = source,
             Metadata = metadata,
         };

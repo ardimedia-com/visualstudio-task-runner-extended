@@ -41,7 +41,12 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _discoverers =
         [
             new TasksJsonDiscoverer(),
+            new TasksVsJsonDiscoverer(),
+            new PackageJsonDiscoverer(),
             new CsprojDiscoverer(),
+            new LaunchSettingsDiscoverer(),
+            new ComposeYmlDiscoverer(),
+            // Phase 2 later: GruntfileDiscoverer, GulpfileDiscoverer (require shell out)
         ];
 
         _taskRunner = new TaskRunner(extensibility);
@@ -73,17 +78,25 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
             try
             {
-                node.Status = Models.TaskStatus.Running;
-                StatusText = $"Starting: {node.Task.Label}...";
-
-                var started = await _taskRunner.StartAsync(node.Task, _workspaceFolder).ConfigureAwait(false);
-                StatusText = started
-                    ? $"Running: {node.Task.Label}"
-                    : $"Failed to start: {node.Task.Label}";
-
-                if (!started)
+                if (node.Task.IsCompound)
                 {
-                    node.Status = Models.TaskStatus.Error;
+                    // Compound task: start all dependent tasks
+                    await StartCompoundTaskAsync(node).ConfigureAwait(false);
+                }
+                else
+                {
+                    node.Status = Models.TaskStatus.Running;
+                    StatusText = $"Starting: {node.Task.Label}...";
+
+                    var started = await _taskRunner.StartAsync(node.Task, _workspaceFolder).ConfigureAwait(false);
+                    StatusText = started
+                        ? $"Running: {node.Task.Label}"
+                        : $"Failed to start: {node.Task.Label}";
+
+                    if (!started)
+                    {
+                        node.Status = Models.TaskStatus.Error;
+                    }
                 }
             }
             catch (Exception ex)
@@ -202,6 +215,26 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 }
             }
 
+            // Discover tasks from parent directories (up to maxParentDepth)
+            const int maxParentDepth = 3;
+            var parentDir = Directory.GetParent(_workspaceFolder)?.FullName;
+            for (int depth = 0; depth < maxParentDepth && parentDir is not null; depth++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var parentNode = new TaskTreeNode($"[Parent: {parentDir}]", TreeIcons.Folder)
+                { SelectCommand = SelectNodeCommand };
+
+                await DiscoverInDirectoryAsync(parentDir, parentNode, cancellationToken).ConfigureAwait(false);
+
+                if (parentNode.Children.Count > 0)
+                {
+                    configFilesRoot.Children.Add(parentNode);
+                }
+
+                parentDir = Directory.GetParent(parentDir)?.FullName;
+            }
+
             if (configFilesRoot.Children.Count > 0)
             {
                 TreeItems.Add(configFilesRoot);
@@ -257,6 +290,66 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         return _taskNodeMap.Values.FirstOrDefault(n => n.Name == name);
     }
 
+    private async Task StartCompoundTaskAsync(TaskTreeNode compoundNode)
+    {
+        var task = compoundNode.Task!;
+        var isParallel = task.DependsOrder.Equals("parallel", StringComparison.OrdinalIgnoreCase);
+
+        StatusText = $"Starting compound task: {task.Label} ({task.DependsOn.Length} dependencies, {task.DependsOrder})...";
+        compoundNode.Status = Models.TaskStatus.Running;
+
+        foreach (var depLabel in task.DependsOn)
+        {
+            var depNode = FindTaskNode(depLabel);
+            if (depNode?.Task is null)
+            {
+                StatusText = $"Dependency not found: {depLabel}";
+                continue;
+            }
+
+            depNode.Status = Models.TaskStatus.Running;
+
+            if (isParallel)
+            {
+                // Fire and forget — start all in parallel
+                _ = _taskRunner.StartAsync(depNode.Task, _workspaceFolder);
+            }
+            else
+            {
+                // Sequential: start and wait for normal tasks, start immediately for background tasks
+                var started = await _taskRunner.StartAsync(depNode.Task, _workspaceFolder).ConfigureAwait(false);
+                if (!started)
+                {
+                    depNode.Status = Models.TaskStatus.Error;
+                    StatusText = $"Failed to start dependency: {depLabel}";
+                    continue;
+                }
+
+                // For normal tasks in sequence, wait for completion before starting next
+                if (depNode.Task.TaskType == TaskType.Normal)
+                {
+                    // Wait until the task finishes
+                    while (_taskRunner.IsRunning(depNode.Task))
+                    {
+                        await Task.Delay(200).ConfigureAwait(false);
+                    }
+
+                    var exitCode = _taskRunner.GetExitCode(depNode.Task);
+                    if (exitCode is not null and not 0)
+                    {
+                        depNode.Status = Models.TaskStatus.Error;
+                        StatusText = $"Dependency failed: {depLabel} (exit code {exitCode})";
+                        compoundNode.Status = Models.TaskStatus.Error;
+                        return; // Stop sequence on failure
+                    }
+                }
+                // Background tasks in sequence: start immediately, don't wait
+            }
+        }
+
+        StatusText = $"Running: {task.Label}";
+    }
+
     private IEnumerable<TaskTreeNode> FindAllNodes()
     {
         return EnumerateNodes(TreeItems);
@@ -307,7 +400,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     {
                         Metadata = metadata,
                         StartCommand = StartTaskCommand,
-                        StopCommand = StopTaskCommand,
+                        StopCommand = task.IsCompound ? null : StopTaskCommand,
                         SelectCommand = SelectNodeCommand,
                     };
                     sourceNode.Children.Add(taskNode);

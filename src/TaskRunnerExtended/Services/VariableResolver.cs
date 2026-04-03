@@ -12,6 +12,9 @@ public static partial class VariableResolver
     [GeneratedRegex(@"\$\{workspaceFolder\}", RegexOptions.None)]
     private static partial Regex WorkspaceFolderPattern();
 
+    [GeneratedRegex(@"\$\{env:([^}]+)\}", RegexOptions.None)]
+    private static partial Regex EnvVariablePattern();
+
     /// <summary>
     /// Resolves variables in the given string.
     /// </summary>
@@ -27,7 +30,18 @@ public static partial class VariableResolver
 
         var result = WorkspaceFolderPattern().Replace(input, workspaceFolder);
 
-        // TODO Phase 2: Add ${file}, ${env:VARIABLE}, ${fileBasename}, etc.
+        // ${env:VARIABLE} → environment variable value
+        result = EnvVariablePattern().Replace(result, match =>
+        {
+            var varName = match.Groups[1].Value;
+            return Environment.GetEnvironmentVariable(varName) ?? string.Empty;
+        });
+
+        // ${workspaceFolderBasename} → name of the workspace folder
+        result = result.Replace("${workspaceFolderBasename}", Path.GetFileName(workspaceFolder));
+
+        // ${cwd} → current working directory
+        result = result.Replace("${cwd}", Environment.CurrentDirectory);
 
         return result;
     }

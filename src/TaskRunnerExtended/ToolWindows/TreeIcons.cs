@@ -23,6 +23,9 @@ public static class TreeIcons
     // Group
     public const string Group = "KnownMonikers.GroupByType";
 
+    // Compound task
+    public const string CompoundTask = "KnownMonikers.GroupByType";
+
     // Parse error
     public const string ParseError = "KnownMonikers.StatusWarning";
 

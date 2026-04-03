@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+### Added (Phase 2: Multi-Source)
+
+- **PackageJsonDiscoverer**: npm/pnpm/yarn script discovery with lock file detection (pnpm > yarn > npm priority), background task heuristics, pre/post script filtering
+- **TasksVsJsonDiscoverer**: Visual Studio native tasks.vs.json format (taskLabel, appliesTo, msbuild type)
+- **ComposeYmlDiscoverer**: Docker Compose services from compose.yml/docker-compose.yml with "all services" task, image metadata (requires YamlDotNet)
+- **LaunchSettingsDiscoverer**: .NET launch profiles (Project, Executable, Docker) with env vars and application URL metadata
+- **Compound Tasks**: dependsOn + dependsOrder (parallel/sequence) support for tasks.json, compound tasks start all dependencies
+- **Extended Variables**: ${env:VARIABLE}, ${workspaceFolderBasename}, ${cwd} resolution
+- **Parent Directory Scan**: Discovers tasks from up to 3 parent directories above workspace, shown as [Parent: path] nodes
+- **CompoundTask Icon**: GroupByType KnownMoniker for compound tasks
+
+### Added (Phase 1: Foundation)
 
 - **Task Discovery**: tasks.json parser and .csproj MSBuild target discovery (SDK-style + .NET Framework)
 - **Task Execution**: Start/stop tasks via Process.Start with Output Window Pane streaming
