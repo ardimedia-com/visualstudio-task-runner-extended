@@ -49,10 +49,17 @@ public class TasksJsonDiscoverer : ITaskDiscoverer
 
             return Task.FromResult<IReadOnlyList<TaskItem>>(tasks);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // Malformed JSON — return empty list. Error will be reported via diagnostics.
-            return Task.FromResult<IReadOnlyList<TaskItem>>([]);
+            var source = new TaskSource(TaskSourceKind.TasksJson, tasksJsonPath, ".vscode/tasks.json");
+            var errorItem = new TaskItem
+            {
+                Label = $"Parse Error: {ex.Message}",
+                Command = string.Empty,
+                Source = source,
+                Error = ex.Message,
+            };
+            return Task.FromResult<IReadOnlyList<TaskItem>>([errorItem]);
         }
     }
 

@@ -9,6 +9,7 @@ using Microsoft.VisualStudio.Extensibility.UI;
 using Microsoft.VisualStudio.ProjectSystem.Query;
 
 using TaskRunnerExtended.Models;
+using TaskRunnerExtended.Services;
 using TaskRunnerExtended.Services.Discovery;
 using TaskRunnerExtended.Services.Execution;
 
@@ -23,6 +24,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     private string _workspaceFolder = string.Empty;
     private readonly ITaskDiscoverer[] _discoverers;
     private readonly TaskRunner _taskRunner;
+    private readonly FileWatcherService _fileWatcher;
 
     // Lookup: tree node by task key (Source.FilePath::Label)
     private readonly Dictionary<string, TaskTreeNode> _taskNodeMap = [];
@@ -45,23 +47,29 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _taskRunner = new TaskRunner(extensibility);
         _taskRunner.TaskStatusChanged += OnTaskStatusChanged;
 
+        _fileWatcher = new FileWatcherService(() =>
+        {
+            // Re-scan when task source files change
+            StatusText = "File change detected, rescanning...";
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnSolutionOpenedAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Rescan failed — ignore
+                }
+            });
+        });
+
         StartTaskCommand = new(async (parameter, ct) =>
         {
-            // Debug: show what parameter we received
-            StatusText = $"Start clicked: param={parameter ?? "null"} type={parameter?.GetType().Name ?? "?"}";
-
-            if (parameter is not string taskName)
-            {
-                StatusText = $"Start: parameter is not string — got {parameter?.GetType().Name ?? "null"}";
-                return;
-            }
+            if (parameter is not string taskName) return;
 
             var node = FindTaskNode(taskName);
-            if (node?.Task is null)
-            {
-                StatusText = $"No runnable task found: '{taskName}' (map has {_taskNodeMap.Count} entries)";
-                return;
-            }
+            if (node?.Task is null) return;
 
             try
             {
@@ -108,6 +116,27 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 StatusText = $"Error stopping {taskName}: {ex.Message}";
             }
         });
+
+        SelectNodeCommand = new((parameter, ct) =>
+        {
+            // Deselect previous
+            if (_selectedNode is not null)
+            {
+                _selectedNode.IsNodeSelected = false;
+            }
+
+            // Find and select new node by name
+            if (parameter is string name)
+            {
+                _selectedNode = FindAllNodes().FirstOrDefault(n => n.Name == name);
+                if (_selectedNode is not null)
+                {
+                    _selectedNode.IsNodeSelected = true;
+                }
+            }
+
+            return Task.CompletedTask;
+        });
     }
 
     [DataMember]
@@ -125,6 +154,11 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
     [DataMember]
     public AsyncCommand StopTaskCommand { get; }
+
+    [DataMember]
+    public AsyncCommand SelectNodeCommand { get; }
+
+    private TaskTreeNode? _selectedNode;
 
     /// <inheritdoc />
     protected override async Task OnSolutionOpenedAsync(CancellationToken cancellationToken)
@@ -150,7 +184,8 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 return;
             }
 
-            var configFilesRoot = new TaskTreeNode("Available Configuration Files (Tasks)", TreeIcons.ConfigFiles);
+            var configFilesRoot = new TaskTreeNode("Available Configuration Files (Tasks)", TreeIcons.ConfigFiles)
+            { SelectCommand = SelectNodeCommand };
             var projectDirs = await GetProjectDirectoriesAsync(cancellationToken).ConfigureAwait(false);
 
             // Discover tasks from solution directory
@@ -173,12 +208,19 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             }
 
             // Run Groups root (Phase 3 — placeholder)
-            var groupsRoot = new TaskTreeNode("Run Groups", TreeIcons.RunGroups);
-            groupsRoot.Children.Add(new TaskTreeNode("(Phase 3 — groups not yet implemented)"));
+            var groupsRoot = new TaskTreeNode("Run Groups", TreeIcons.RunGroups)
+            { SelectCommand = SelectNodeCommand };
+            groupsRoot.Children.Add(new TaskTreeNode("(Phase 3 — groups not yet implemented)")
+            { SelectCommand = SelectNodeCommand });
             TreeItems.Add(groupsRoot);
 
             var taskCount = CountTasks(configFilesRoot);
             StatusText = $"Found {taskCount} task(s) from {configFilesRoot.Children.Count} source(s).";
+
+            // Start watching for file changes
+            var watchDirs = new List<string> { _workspaceFolder };
+            watchDirs.AddRange(projectDirs);
+            _fileWatcher.Watch(watchDirs);
         }
         catch (OperationCanceledException)
         {
@@ -193,7 +235,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     /// <inheritdoc />
     protected override void OnSolutionClosed()
     {
-        // Stop all running tasks when solution closes
+        _fileWatcher.Stop();
         _ = _taskRunner.StopAllAsync();
         TreeItems.Clear();
         _taskNodeMap.Clear();
@@ -215,6 +257,23 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         return _taskNodeMap.Values.FirstOrDefault(n => n.Name == name);
     }
 
+    private IEnumerable<TaskTreeNode> FindAllNodes()
+    {
+        return EnumerateNodes(TreeItems);
+
+        static IEnumerable<TaskTreeNode> EnumerateNodes(IEnumerable<TaskTreeNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                yield return node;
+                foreach (var child in EnumerateNodes(node.Children))
+                {
+                    yield return child;
+                }
+            }
+        }
+    }
+
     private async Task DiscoverInDirectoryAsync(
         string directory, TaskTreeNode parentNode, CancellationToken cancellationToken)
     {
@@ -230,16 +289,26 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             {
                 var firstTask = group.First();
                 var sourceIcon = TreeIcons.ForSourceKind(firstTask.Source.Kind);
-                var sourceNode = new TaskTreeNode(group.Key, sourceIcon);
+                var sourceNode = new TaskTreeNode(group.Key, sourceIcon)
+                { SelectCommand = SelectNodeCommand };
 
                 foreach (var task in group)
                 {
+                    if (task.IsError)
+                    {
+                        var errorNode = new TaskTreeNode(task.Label, TreeIcons.ParseError)
+                        { SelectCommand = SelectNodeCommand };
+                        sourceNode.Children.Add(errorNode);
+                        continue;
+                    }
+
                     var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
                     var taskNode = new TaskTreeNode(task.Label, task)
                     {
                         Metadata = metadata,
                         StartCommand = StartTaskCommand,
                         StopCommand = StopTaskCommand,
+                        SelectCommand = SelectNodeCommand,
                     };
                     sourceNode.Children.Add(taskNode);
 

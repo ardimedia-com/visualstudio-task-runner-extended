@@ -32,4 +32,10 @@ public class TaskItem
 
     /// <summary>Additional metadata for display (e.g., "Debug only", "Pre-Build").</summary>
     public string? Metadata { get; init; }
+
+    /// <summary>Error message if this task could not be parsed correctly. Non-null = not startable.</summary>
+    public string? Error { get; init; }
+
+    /// <summary>Whether this item represents a parse error rather than a real task.</summary>
+    public bool IsError => Error is not null;
 }

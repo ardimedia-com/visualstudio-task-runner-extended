@@ -166,6 +166,7 @@ public class TaskRunner : IDisposable
             return;
         }
 
+        running.WasStopped = true;
         await running.ProcessManager.StopAsync(gracefulTimeoutMs).ConfigureAwait(false);
         _runningTasks.Remove(taskKey);
 
@@ -255,8 +256,12 @@ public class TaskRunner : IDisposable
             await writer.WriteLineAsync(string.Empty).ConfigureAwait(false);
             await writer.WriteLineAsync($"--- Task exited with code {exitCode} ---").ConfigureAwait(false);
 
-            var status = exitCode == 0 ? Models.TaskStatus.Idle : Models.TaskStatus.Error;
-            TaskStatusChanged?.Invoke(running.Task, status);
+            // Don't report Error if the task was manually stopped (force kill gives non-zero exit code)
+            if (!running.WasStopped)
+            {
+                var status = exitCode == 0 ? Models.TaskStatus.Idle : Models.TaskStatus.Error;
+                TaskStatusChanged?.Invoke(running.Task, status);
+            }
 
             // Clean up
             var taskKey = GetTaskKey(running.Task);
@@ -296,5 +301,9 @@ public class TaskRunner : IDisposable
         TaskItem Task,
         Process Process,
         ProcessTreeManager ProcessManager,
-        Microsoft.VisualStudio.Extensibility.Documents.OutputChannel OutputChannel);
+        Microsoft.VisualStudio.Extensibility.Documents.OutputChannel OutputChannel)
+    {
+        /// <summary>Set to true when Stop is called manually — prevents Error status on non-zero exit.</summary>
+        public bool WasStopped { get; set; }
+    };
 }

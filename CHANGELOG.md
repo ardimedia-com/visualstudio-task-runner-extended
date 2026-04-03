@@ -6,10 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Task Discovery**: tasks.json parser and .csproj MSBuild target discovery (SDK-style + .NET Framework)
+- **Task Execution**: Start/stop tasks via Process.Start with Output Window Pane streaming
+- **Process Tree Management**: Windows Job Objects for reliable process tree kill and graceful shutdown
+- **Unified Tree View**: Hierarchical tree with VS KnownMoniker icons, custom ControlTemplate with full-row hover/selection highlighting
+- **Context Menu**: Right-click Start/Stop/Add to Group with enabled/disabled based on task status
+- **Right-click Selection**: Custom selection via vs:EventHandler on MouseRightButtonDown
+- **Toolbar**: Refresh, Stop All, Collapse All buttons in tool window header
+- **Sidebar Placement**: Docked alongside Solution Explorer via DockedTo(SolutionExplorerGuid)
+- **Status Icons**: Idle (Run), Running (Sync), Error (StatusError) with automatic switching
+- **File Watching**: FileSystemWatcher with 500ms debounce on all task source files, auto-rescan on changes
+- **Variable Resolution**: ${workspaceFolder} support for tasks.json commands and arguments
+- **Error Handling**: Parse errors shown as warning nodes in the tree (malformed JSON/XML)
+- **ANSI Strip**: Removes ANSI escape codes from task output, NO_COLOR env var set
+- **Solution Detection**: Waits for solution to load, configurable polling/debounce timing via Ardimedia.VsExtensions.Common 1.0.8
+- **Models**: TaskItem, TaskSource, TaskSourceKind, TaskStatus, TaskType
+- **16 Unit Tests**: TasksJsonDiscoverer, CsprojDiscoverer, VariableResolver (all passing)
+- **FUNDING.yml**: GitHub Sponsors configuration
+
+### Phase 1 Spike Results
+
+- TreeView + HierarchicalDataTemplate: works in Remote UI
+- ContextMenu: works in Remote UI
+- Sidebar Placement (DockedTo SolutionExplorer): works
+- VS Internal Terminal API: not possible (filed microsoft/VSExtensibility#560)
+- Drag-and-Drop in Remote UI: not possible (filed microsoft/VSExtensibility#561)
+
+### Infrastructure
+
 - Initial project structure (extension skeleton, CI/CD, test project)
 - Feature specification (.claude/feature.md)
 - CLI reference documentation (.claude/reference-cli.md)
 - Task configuration file reference (.claude/reference-task-config-files.md)
-- Tool window placeholder with ViewModel inheriting ToolWindowViewModelBase
-- OpenToolWindowCommand in Tools menu
 - GitHub Actions: build.yml (push/PR) and release.yml (tag-based)
+- README.md with feature overview and task sources table

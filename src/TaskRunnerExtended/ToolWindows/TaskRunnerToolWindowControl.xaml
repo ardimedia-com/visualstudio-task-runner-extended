@@ -45,22 +45,6 @@
                     <Setter Property="BorderThickness" Value="0" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="HorizontalAlignment" Value="Stretch" />
-                    <!-- Context menu on the TreeViewItem itself — right-click auto-selects -->
-                    <Setter Property="ContextMenu">
-                        <Setter.Value>
-                            <ContextMenu>
-                                <MenuItem Header="Start"
-                                          Command="{Binding StartCommand}"
-                                          CommandParameter="{Binding Name}" />
-                                <MenuItem Header="Stop"
-                                          Command="{Binding StopCommand}"
-                                          CommandParameter="{Binding Name}" />
-                                <Separator />
-                                <MenuItem Header="Add to Group..."
-                                          IsEnabled="False" />
-                            </ContextMenu>
-                        </Setter.Value>
-                    </Setter>
                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -78,7 +62,30 @@
                                             Padding="0,1"
                                             Margin="-200,0,0,0"
                                             SnapsToDevicePixels="True">
-                                        <DockPanel Margin="200,0,0,0">
+                                        <DockPanel x:Name="HeaderPanel" Margin="200,0,0,0" Background="Transparent">
+                                            <!-- Right-click: select node + show context menu -->
+                                            <vs:ExtensibilityUICommands.EventHandlers>
+                                                <vs:EventHandlerCollection>
+                                                    <vs:EventHandler Event="MouseRightButtonDown"
+                                                                     Command="{Binding SelectCommand}"
+                                                                     CommandParameter="{Binding Name}" />
+                                                </vs:EventHandlerCollection>
+                                            </vs:ExtensibilityUICommands.EventHandlers>
+                                            <DockPanel.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Start"
+                                                              Command="{Binding StartCommand}"
+                                                              CommandParameter="{Binding Name}"
+                                                              IsEnabled="{Binding CanStart}" />
+                                                    <MenuItem Header="Stop"
+                                                              Command="{Binding StopCommand}"
+                                                              CommandParameter="{Binding Name}"
+                                                              IsEnabled="{Binding CanStop}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Add to Group..."
+                                                              IsEnabled="False" />
+                                                </ContextMenu>
+                                            </DockPanel.ContextMenu>
                                             <!-- Expand/collapse toggle -->
                                             <ToggleButton x:Name="Expander"
                                                           DockPanel.Dock="Left"
@@ -86,21 +93,25 @@
                                                           ClickMode="Press"
                                                           Width="16" Height="16"
                                                           Margin="0,0,2,0"
-                                                          Background="Transparent"
-                                                          BorderThickness="0"
                                                           Focusable="False"
-                                                          VerticalAlignment="Center"
-                                                          Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
-                                                <ToggleButton.Style>
-                                                    <Style TargetType="ToggleButton">
-                                                        <Setter Property="Content" Value="▸" />
-                                                        <Style.Triggers>
+                                                          VerticalAlignment="Center">
+                                                <ToggleButton.Template>
+                                                    <ControlTemplate TargetType="ToggleButton">
+                                                        <Border Background="Transparent" Padding="2">
+                                                            <TextBlock x:Name="Arrow"
+                                                                       Text="▸"
+                                                                       FontSize="11"
+                                                                       Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
                                                             <Trigger Property="IsChecked" Value="True">
-                                                                <Setter Property="Content" Value="▾" />
+                                                                <Setter TargetName="Arrow" Property="Text" Value="▾" />
                                                             </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </ToggleButton.Style>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </ToggleButton.Template>
                                             </ToggleButton>
                                             <!-- Content -->
                                             <ContentPresenter x:Name="PART_Header"
@@ -122,19 +133,21 @@
                                     <Trigger Property="HasItems" Value="False">
                                         <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
                                     </Trigger>
-                                    <!-- Hover: only the direct Border, not parent items -->
-                                    <MultiTrigger>
-                                        <MultiTrigger.Conditions>
-                                            <Condition SourceName="ItemBorder" Property="IsMouseDirectlyOver" Value="True" />
-                                        </MultiTrigger.Conditions>
+                                    <!-- Hover: highlight when mouse is over this item's header row (not children) -->
+                                    <Trigger SourceName="HeaderPanel" Property="IsMouseOver" Value="True">
                                         <Setter TargetName="ItemBorder" Property="Background"
                                                 Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}" />
-                                    </MultiTrigger>
+                                    </Trigger>
                                     <!-- Selected: full row highlight -->
                                     <Trigger Property="IsSelected" Value="True">
                                         <Setter TargetName="ItemBorder" Property="Background"
                                                 Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
                                     </Trigger>
+                                    <!-- Custom selection (via right-click SelectCommand) -->
+                                    <DataTrigger Binding="{Binding IsNodeSelected}" Value="True">
+                                        <Setter TargetName="ItemBorder" Property="Background"
+                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
+                                    </DataTrigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Setter.Value>

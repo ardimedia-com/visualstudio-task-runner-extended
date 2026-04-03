@@ -17,6 +17,9 @@ public class TaskTreeNode : NotifyPropertyChangedObject
 {
     private string _icon;
     private string _statusIcon;
+    private bool _isNodeSelected;
+    private bool _canStart;
+    private bool _canStop;
     private Models.TaskStatus _status = Models.TaskStatus.Idle;
 
     /// <summary>
@@ -38,6 +41,8 @@ public class TaskTreeNode : NotifyPropertyChangedObject
         Task = task;
         _icon = TreeIcons.TaskIdle;
         _statusIcon = TreeIcons.TaskIdle;
+        _canStart = true;
+        _canStop = false;
         IsTask = true;
     }
 
@@ -77,6 +82,34 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand? StopCommand { get; set; }
 
+    /// <summary>Command to select this node (fired on right-click via vs:EventHandler).</summary>
+    [DataMember]
+    public IAsyncCommand? SelectCommand { get; set; }
+
+    /// <summary>Whether this node is selected in the tree (custom selection, not WPF IsSelected).</summary>
+    [DataMember]
+    public bool IsNodeSelected
+    {
+        get => _isNodeSelected;
+        set => SetProperty(ref _isNodeSelected, value);
+    }
+
+    /// <summary>Whether Start is available (task exists and is not running).</summary>
+    [DataMember]
+    public bool CanStart
+    {
+        get => _canStart;
+        set => SetProperty(ref _canStart, value);
+    }
+
+    /// <summary>Whether Stop is available (task exists and is running).</summary>
+    [DataMember]
+    public bool CanStop
+    {
+        get => _canStop;
+        set => SetProperty(ref _canStop, value);
+    }
+
     /// <summary>Child nodes (source files under root, tasks under source file).</summary>
     [DataMember]
     public ObservableList<TaskTreeNode> Children { get; } = [];
@@ -99,6 +132,8 @@ public class TaskTreeNode : NotifyPropertyChangedObject
             };
             Icon = newIcon;
             StatusIcon = newIcon;
+            CanStart = value != Models.TaskStatus.Running;
+            CanStop = value == Models.TaskStatus.Running;
         }
     }
 }

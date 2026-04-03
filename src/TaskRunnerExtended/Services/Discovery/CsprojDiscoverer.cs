@@ -48,9 +48,16 @@ public class CsprojDiscoverer : ITaskDiscoverer
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Malformed XML — skip this file. Error will be reported via diagnostics.
+                var source = new TaskSource(TaskSourceKind.Csproj, csprojPath, Path.GetFileName(csprojPath));
+                tasks.Add(new TaskItem
+                {
+                    Label = $"Parse Error: {ex.Message}",
+                    Command = string.Empty,
+                    Source = source,
+                    Error = ex.Message,
+                });
             }
         }
 
