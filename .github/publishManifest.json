@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json.schemastore.org/vsix-publish",
+  "categories": ["coding"],
+  "identity": {
+    "internalName": "TaskRunnerExtended"
+  },
+  "overview": "README.md",
+  "pricing": "Free",
+  "publisher": "Ardimedia",
+  "repo": "https://github.com/ardimedia-com/visualstudio-task-runner-extended"
+}

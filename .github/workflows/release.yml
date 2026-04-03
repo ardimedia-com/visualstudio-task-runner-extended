@@ -1,0 +1,69 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/taskrunnerextended.slnx
+
+      - name: Build
+        run: dotnet build src/taskrunnerextended.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test src/taskrunnerextended.slnx -c Release --no-build --filter "TestCategory=Unit"
+
+      - name: Find VSIX
+        id: vsix
+        shell: bash
+        run: |
+          VSIX_PATH=$(find src -name "*.vsix" -path "*/Release/*" | head -1)
+          echo "path=$VSIX_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found VSIX: $VSIX_PATH"
+
+      # --- Signing placeholder (Azure Trusted Signing) ---
+      # Uncomment once Azure Trusted Signing is configured
+      #
+      # - name: Sign VSIX
+      #   uses: azure/trusted-signing-action@v0.5.0
+      #   with:
+      #     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+      #     endpoint: https://weu.codesigning.azure.net
+      #     trusted-signing-account-name: ardimedia-signing
+      #     certificate-profile-name: ardimedia-public
+      #     files-folder: ${{ github.workspace }}/src/TaskRunnerExtended/bin/Release/net10.0
+      #     files-folder-filter: vsix
+      #     file-digest: SHA256
+      #     timestamp-rfc3161: http://timestamp.acs.microsoft.com
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.vsix.outputs.path }}
+          generate_release_notes: true
+
+      - name: Publish to Marketplace
+        uses: cezarypiatek/VsixPublisherAction@1.1
+        with:
+          extension-file: ${{ steps.vsix.outputs.path }}
+          publish-manifest-file: .github/publishManifest.json
+          personal-access-code: ${{ secrets.VS_MARKETPLACE_PAT }}
