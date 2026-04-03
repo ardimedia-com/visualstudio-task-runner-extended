@@ -18,12 +18,15 @@ public class TaskRunnerToolWindow : ToolWindow
         this.Title = "Task Runner Extended";
     }
 
+    // Solution Explorer GUID (standard VS tool window)
+    private static readonly Guid SolutionExplorerGuid = new("3AE79031-E1BC-11D0-8F78-00A0C9110057");
+
     /// <inheritdoc />
     public override ToolWindowConfiguration ToolWindowConfiguration => new()
     {
-        // TODO: Phase 1 spike will determine if DockedTo(SolutionExplorerGuid) works for sidebar placement.
-        // Fallback: ToolWindowPlacement.DocumentWell
-        Placement = ToolWindowPlacement.DocumentWell,
+        // Spike 3: Test sidebar placement next to Solution Explorer
+        Placement = ToolWindowPlacement.DockedTo(SolutionExplorerGuid),
+        DockDirection = Dock.None,
     };
 
     /// <inheritdoc />

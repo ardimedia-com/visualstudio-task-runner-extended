@@ -1,6 +1,6 @@
 ---
 status: Draft
-updated: 2026-04-03 23:00h
+updated: 2026-04-03 23:45h
 references:
   - .claude/reference-cli.md — CLI reference (dotnet, npm, docker, VS launch functions)
   - .claude/reference-task-config-files.md — Task configuration file formats
@@ -66,7 +66,7 @@ For a detailed comparison of what Visual Studio offers natively vs what this ext
 **Flow:**
 1. **Discovery** — Scan project, solution, and parent directories for task source files
 2. **Parsing** — Read each file format and extract tasks into a unified Task Model
-3. **UI** — Display tasks in a unified tree view, allow grouping via drag-and-drop
+3. **UI** — Display tasks in a unified tree view, allow grouping via context menu
 4. **Execution** — Start/stop tasks via Process Management (Job Objects, output streaming)
 5. **File Watching** — Monitor source files for changes, refresh the task list automatically
 
@@ -273,7 +273,7 @@ When the extension updates the schema:
 ### UI in Tool Window (Run Groups Root Node)
 
 - Run Groups are a root node in the unified tree view (see Tool Window section)
-- Drag-and-drop from the Available Configuration Files root node to add tasks to groups
+- Context menu "Add to Group..." to assign tasks to groups
 - Inline creation via "New Group..." node
 - Edit: name, icon, order, parallel/sequential
 
@@ -315,7 +315,7 @@ Task Runner Extended
   > Build Production
     o  npm: buildcss
     o  msbuild: BuildTailwindCss
-  + New Group...                 (drag tasks here)
+  + New Group...
 ```
 
 ### Available Configuration Files (Tasks) Root Node
@@ -329,7 +329,7 @@ Task Runner Extended
 ### Run Groups Root Node
 
 - Displays all defined run groups
-- Drag-and-drop from Available Configuration Files to add tasks to a group (or context menu "Add to Group..." if drag-drop not feasible in Remote UI)
+- Context menu "Add to Group..." to assign tasks from Available Configuration Files to a group
 - "New Group..." node at the bottom to create groups inline
 - Group-level status: shows count of running tasks (e.g., ">> 3 running")
 - Context menu on task within group: additional options (Remove from Group, Reorder)
@@ -339,7 +339,7 @@ Task Runner Extended
 Instead of a dedicated "Running" tab, running tasks are visually indicated throughout the tree:
 - **Task level**: Icon changes from o (idle) to > (running) to x (error)
 - **Group level**: Shows aggregate status (e.g., "3 running")
-- **Click on running task** -> focus the task's terminal tab or Output Window Pane
+- **Click on running task** -> focus the task's Output Window Pane
 - **Filter** (optional): "Show running only" to temporarily filter the tree
 
 ## Process Management
@@ -350,11 +350,7 @@ Command construction depends on the `type` field in tasks.json:
 - `"type": "shell"` (default) → wraps the command in `cmd.exe /c <command>` (enables PATH resolution, pipes, redirects)
 - `"type": "process"` → executes the command directly (no shell wrapper, faster, but no shell features)
 
-**If VS Internal Terminal is available (spike success):**
-Both shell and process commands are sent to a named terminal tab. The terminal handles execution, output display, and encoding. The extension only needs to open the tab, send the command, and track the process.
-
-**If Output Window Pane fallback:**
-The extension uses `Process.Start` directly, reads stdout/stderr via `OutputDataReceived`/`ErrorDataReceived` events, and streams output to the pane. In this mode, encoding must be handled explicitly: `Process.StartInfo.StandardOutputEncoding = Encoding.UTF8` or prepend `chcp 65001`, because `cmd.exe` defaults to CP437/CP1252 on Windows.
+The extension uses `Process.Start` to execute the command, reads stdout/stderr via `OutputDataReceived`/`ErrorDataReceived` events, and streams output to a named Output Window Pane. Encoding must be handled explicitly: `Process.StartInfo.StandardOutputEncoding = Encoding.UTF8` or prepend `chcp 65001`, because `cmd.exe` defaults to CP437/CP1252 on Windows.
 
 Additional details:
 - .NET Framework projects: `msbuild.exe` instead of `dotnet msbuild` (path resolved via `vswhere.exe`)
@@ -372,7 +368,7 @@ The extension classifies every task as either **normal** or **background**:
 | Exit | Natural exit (exit code 0 or error) | Never exits on its own |
 | Tree status | idle → running → idle/error | idle → running (until manually stopped) |
 | In sequence | Next task waits for exit code 0 | Next task starts immediately (no waiting) |
-| Terminal tab | Can auto-close after exit (`keepOutputOnStop`) | Stays open as long as the task runs |
+| Output pane | Can auto-close after exit (`keepOutputOnStop`) | Stays open as long as the task runs |
 
 The classification is determined automatically based on the command. For the full classification table, see [reference-cli.md](reference-cli.md).
 
@@ -416,56 +412,28 @@ When the solution or Visual Studio is closed:
 
 ## Output Display
 
-### Preferred: VS Internal Terminal
+### Primary: Output Window Pane
 
-The preferred approach is to open a **terminal tab per task** in Visual Studio's built-in integrated terminal (View → Terminal). This gives developers a familiar, interactive terminal experience with real-time output.
+The Phase 1 spike confirmed that VS Internal Terminal API is **not accessible** from out-of-process extensions. Output Window Panes are the primary output approach.
 
-Each task is **permanently linked** to its own terminal tab:
+Each started task gets its own **Output Window Pane**:
 
-| Action | Terminal behavior |
+| Action | Behavior |
 |---|---|
-| Start task | Open new terminal tab, named after the task (e.g., "watchcss") |
-| Task running | Terminal shows live stdout/stderr output |
-| Stop task | Process terminated, terminal tab stays open (output remains visible) |
-| Restart task | **Reuse the same terminal tab** — clear output, start new process |
-| Click task in tree | Focus the linked terminal tab |
-| Close terminal tab | Optionally stop the running task (configurable) |
+| Start task | Create named Output Pane (e.g., "Task: watchcss"), stream stdout/stderr |
+| Task running | Real-time output streaming via `OutputDataReceived`/`ErrorDataReceived` |
+| Stop task | Process terminated, pane stays open (output remains visible) |
+| Restart task | **Reuse the same pane** — clear content, start new process |
+| Click task in tree | Focus the linked Output Pane |
 
-The extension maintains a `TaskItem → Terminal Tab ID` mapping to enable:
-- Focusing the correct terminal tab when clicking a task in the tree
-- Reusing tabs on restart instead of opening new ones
-- Closing/stopping via either the tree or the terminal
+The extension maintains a `TaskItem → Output Pane` mapping for focusing, reusing, and cleanup.
 
-However, the VisualStudio.Extensibility SDK does **not** expose an official Terminal API. The internal terminal may be accessible via:
-- **VSSDK COM interfaces** (`IVsTerminalService` or similar) — requires investigation
-- **Mixed-mode extension** (out-of-process + VSSDK-compatible in-process access)
-- **DTE automation** — `DTE.ExecuteCommand("View.Terminal")` or similar
+### Alternative: External Terminal
 
-**Critical path**: This will be validated early in Phase 1 (after project setup, before building features). The spike must confirm that the API allows: opening a named tab, sending commands, reading output, closing a tab, and reusing an existing tab.
-
-### Fallback: Output Window Pane
-
-If the VS internal terminal cannot be controlled programmatically, the fallback is:
-
-- One **Output Window Pane** per task (read-only)
-- Pane name = task label (e.g., "Task: watchcss")
-- Real-time output streaming
-- Pane stays open after task ends (configurable)
-
-### Fallback: External Terminal
-
-For interactive tasks that require user input:
-- `start /min cmd /c ...` (separate window outside VS)
-- Only used when the other approaches can't handle the use case
-
-### Output Options Summary
-
-| Approach | Interactive | In VS | Effort | Status |
-|---|---|---|---|---|
-| **VS Internal Terminal** | Yes | Yes | Unknown | Preferred — validate in Phase 1 spike |
-| **Output Window Pane** | No (read-only) | Yes | Low | Proven fallback |
-| **External Terminal** | Yes | No | Low | Last resort |
-| **Custom WPF Terminal** | Partial | Yes | High | Not planned (only if all above fail) |
+For interactive tasks that require user input (e.g., `docker login`, `npm publish` with OTP):
+- Context menu option "Run in External Terminal"
+- Opens `cmd.exe` or `powershell.exe` in a separate window
+- Only used when tasks require stdin interaction
 
 ### Output Buffer Management
 
@@ -565,7 +533,7 @@ The extension must meet VS Marketplace accessibility requirements:
 | `taskRunnerExtended.searchParentDirectories` | `true` | Search parent directories |
 | `taskRunnerExtended.maxParentDepth` | `3` | Maximum upward search depth |
 | `taskRunnerExtended.newGroupsLocation` | `local` | Where new groups are saved: `local` (task-runner-extended-am.local.json) or `shared` (task-runner-extended-am.json). Both files are always read and merged. |
-| `taskRunnerExtended.outputMode` | `auto` | `auto` (terminal if available, else output pane), `outputPane`, or `externalTerminal` |
+| `taskRunnerExtended.outputMode` | `outputPane` | `outputPane` (default) or `externalTerminal` (opens separate window) |
 | `taskRunnerExtended.autoStartGroup` | `""` | Group to auto-start on Solution Open (requires trust) |
 | `taskRunnerExtended.confirmOnClose` | `true` | Confirmation dialog when tasks are running on close |
 | `taskRunnerExtended.outputEncoding` | `utf-8` | Encoding for task output |
@@ -574,8 +542,7 @@ The extension must meet VS Marketplace accessibility requirements:
 | `taskRunnerExtended.gracefulShutdownTimeout` | `5000` | Milliseconds until force kill after Ctrl+C signal |
 | `taskRunnerExtended.maxPackageJsonDepth` | `20` | Maximum number of package.json files to scan in monorepos |
 | `taskRunnerExtended.excludePatterns` | `[]` | Glob patterns to exclude from scanning (e.g., `["**/samples/**", "**/packages/**"]`) |
-| `taskRunnerExtended.keepOutputOnStop` | `true` | Keep terminal tab / output pane open after task stops (false = auto-close) |
-| `taskRunnerExtended.closeTerminalStopsTask` | `true` | Closing a terminal tab also stops the running task |
+| `taskRunnerExtended.keepOutputOnStop` | `true` | Keep output pane open after task stops (false = auto-close) |
 | `taskRunnerExtended.maxOutputLines` | `10000` | Maximum lines per task in the output buffer (ring buffer) |
 
 ## Technology Stack
@@ -717,34 +684,14 @@ Focus: Project setup, critical path validation, then tasks.json + .csproj discov
 - Set up CI/CD (build.yml, release.yml)
 - Reference `Ardimedia.VsExtensions.Common`
 
-**Step 2 — Critical path validation (spike):**
+**Step 2 — Critical path validation (spike): COMPLETED**
 
-All five questions below must be answered before building features. Results determine the UI architecture and output strategy.
-
-1. **Remote UI: TreeView support?**
-   - Can Remote UI render a `TreeView` with `HierarchicalDataTemplate`?
-   - If not: Alternative with nested `Expander`/`ItemsControl` constructs
-   - The template projects only use flat `ItemsControl`/`ListView` — TreeView is unproven
-
-2. **Remote UI: Drag-and-Drop?**
-   - Can items be dragged between nodes in Remote UI?
-   - Likely NOT feasible (RPC-based rendering can't handle continuous mouse events)
-   - If not: Alternative via context menu "Add to Group..." with selection dialog
-
-3. **Remote UI: Context Menus?**
-   - Does WPF `ContextMenu` work in Remote UI?
-   - If not: Alternative via toolbar buttons in the tool window header
-
-4. **Tool Window: Sidebar Placement?**
-   - Test `ToolWindowPlacement.DockedTo(SolutionExplorerGuid)` with `DockDirection`
-   - No `ToolWindowPlacement.Sidebar` exists — docking alongside Solution Explorer requires its GUID (`3AE79031-E1BC-11D0-8F78-00A0C9110057`)
-   - Fallback: `DocumentWell` (like the template projects)
-
-5. **VS Internal Terminal API?**
-   - Try VSSDK COM interfaces (`IVsTerminalService` or similar)
-   - Try DTE automation (`DTE.ExecuteCommand`)
-   - Try mixed-mode (out-of-process extension with in-process VSSDK access)
-   - If not feasible: Output Window Panes become the primary output strategy
+See "Technical Risks → Phase 1 Spike Results" for full results. Summary:
+- TreeView + HierarchicalDataTemplate: **WORKS**
+- ContextMenu on tree items: **WORKS**
+- Sidebar placement (DockedTo Solution Explorer): **WORKS**
+- VS Internal Terminal API: **NOT POSSIBLE** → Output Window Panes as primary
+- Drag-and-Drop: **NOT POSSIBLE** → Context menu "Add to Group..." as alternative
 
 **Step 3 — Core features:**
 - Read and parse .vscode/tasks.json (label, command, args, cwd, isBackground)
@@ -753,7 +700,7 @@ All five questions below must be answered before building features. Results dete
   - .NET Framework: `msbuild.exe` path resolution via `vswhere.exe`
   - Recognize both `BeforeTargets="Build"` and `BeforeBuild` naming patterns
 - Tool window with unified tree view (Available Configuration Files root node)
-- Start task (output in VS terminal or Output Window Pane depending on spike result)
+- Start task (output in dedicated Output Window Pane per task)
 - Stop task (entire process tree via Job Objects)
 - Status tracking (idle / running / error)
 - Basic hierarchy (solution directory + project directories)
@@ -786,7 +733,7 @@ Task groups and start profiles.
 - Task groups data model (task-runner-extended-am.json / task-runner-extended-am.local.json)
 - Run Groups root node in unified tree view
 - Start/stop per group via double-click or context menu (parallel/sequential)
-- Drag-and-drop from Available Configuration Files root node into groups (or context menu "Add to Group..." if drag-drop not feasible)
+- Context menu "Add to Group..." to assign tasks to groups (drag-and-drop not feasible in Remote UI)
 - Workspace trust concept (confirmation on first start)
 - autoStartGroup with trust confirmation
 
@@ -831,12 +778,20 @@ For a detailed comparison of built-in VS launch features vs this extension, see 
 
 ## Technical Risks
 
+### Phase 1 Spike Results
+
+| Spike | Result | Details |
+|---|---|---|
+| **TreeView + HierarchicalDataTemplate** | **WORKS** | Standard WPF TreeView renders correctly in Remote UI with nested data binding. |
+| **ContextMenu** | **WORKS** | WPF ContextMenu on TreeView items works, commands fire correctly via AsyncCommand. |
+| **Sidebar Placement** | **WORKS** | `ToolWindowPlacement.DockedTo(SolutionExplorerGuid)` with `DockDirection = Dock.None` docks alongside Solution Explorer. |
+| **VS Internal Terminal API** | **NOT POSSIBLE** | `DTE.ExecuteCommand` is not available in out-of-process extensions (Microsoft explicitly rejected this: [VSExtensibility#329](https://github.com/microsoft/VSExtensibility/issues/329), [#153](https://github.com/microsoft/VSExtensibility/issues/153)). No API exists to create/name/control terminal tabs. **Decision: Output Window Panes as primary output approach.** |
+| **Drag-and-Drop** | **NOT POSSIBLE** | Remote UI does not support event handlers or code-behind. Drag-and-drop requires DragEnter/DragOver/Drop events. **Decision: Context menu "Add to Group..." as alternative (already proven in spike).** |
+
+### Remaining Risks
+
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **Remote UI: TreeView + Drag-and-Drop** | **HIGH** | Remote UI supports a subset of WPF. TreeView and Drag-and-Drop are unproven — template projects only use flat lists. **Validate in Phase 1 spike.** Fallback: nested Expander/ItemsControl for tree, context menu "Add to Group..." dialog for grouping. |
-| **VS Internal Terminal API** | **HIGH** | No official API in VisualStudio.Extensibility SDK. DTE automation can open terminal but NOT create/name/control tabs. VSSDK COM requires mixed-mode. **Validate in Phase 1 spike.** Likely outcome: Output Window Panes as primary approach. |
-| **Remote UI: Context Menus** | **MEDIUM-HIGH** | WPF ContextMenu may not work in Remote UI. Template projects don't use them. **Validate in Phase 1 spike.** Fallback: toolbar buttons in tool window header. |
-| **Sidebar Placement** | **MEDIUM** | No `ToolWindowPlacement.Sidebar` exists. Must use `DockedTo(SolutionExplorerGuid)`. Only works if Solution Explorer is open. Fallback: DocumentWell. **Validate in Phase 1 spike.** |
 | Process tree management on Windows | MEDIUM-HIGH | Windows Job Objects with `KILL_ON_JOB_CLOSE`. Gotcha: If extension host crashes, handle may be lost before kernel resolves Job Object. Test crash scenarios. |
 | **Console encoding (Windows)** | **MEDIUM** | `cmd.exe` defaults to CP437/CP1252, not UTF-8. Must set `Process.StartInfo.StandardOutputEncoding = Encoding.UTF8` or prepend `chcp 65001`. Without this, umlauts and special chars are corrupted. |
 | **FileSystemWatcher reliability** | **MEDIUM** | Buffer overflow on mass file changes (e.g., `npm install`). Set `InternalBufferSize` to 64KB+. Handle duplicate events. Unreliable on network shares (SMB). Limit watcher count for large solutions. |
