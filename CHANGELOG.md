@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Phase 3: Grouping)
+
+- **TaskGroup model**: TaskGroup, TaskGroupEntry, TaskGroupConfig
+- **GroupConfigService**: Read/write/merge task-runner-extended-am.json (shared) and .local.json (per-user), atomic writes, concurrent access handling
+- **Run Groups tree**: Real groups from config files displayed in the tree with group icon
+- **Add to Group**: Context menu command to add any task to a group
+- **New Group**: Create new groups via "+ New Group..." node in the tree
+- **Start/Stop Group**: Start all tasks in a group (parallel or sequential), stop all tasks
+- **Delete Group**: Remove groups via context menu
+- **Merge Logic**: Local groups override shared groups with the same name
+
 ### Added (Phase 2: Multi-Source)
 
 - **PackageJsonDiscoverer**: npm/pnpm/yarn script discovery with lock file detection (pnpm > yarn > npm priority), background task heuristics, pre/post script filtering

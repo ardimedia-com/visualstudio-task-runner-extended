@@ -25,6 +25,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     private readonly ITaskDiscoverer[] _discoverers;
     private readonly TaskRunner _taskRunner;
     private readonly FileWatcherService _fileWatcher;
+    private readonly GroupConfigService _groupConfigService = new();
 
     // Lookup: tree node by task key (Source.FilePath::Label)
     private readonly Dictionary<string, TaskTreeNode> _taskNodeMap = [];
@@ -150,6 +151,129 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
             return Task.CompletedTask;
         });
+
+        // "Add to Group..." — adds the selected task to an existing or new group
+        AddToGroupCommand = new((parameter, ct) =>
+        {
+            if (parameter is not string taskName || string.IsNullOrEmpty(_workspaceFolder)) return Task.CompletedTask;
+
+            var node = FindTaskNode(taskName);
+            if (node?.Task is null) return Task.CompletedTask;
+
+            // For now: create a "Default" group if none exist, or add to first group
+            var groups = _groupConfigService.GetGroupNames(_workspaceFolder);
+            var groupName = groups.Count > 0 ? groups[0] : "Default";
+
+            _groupConfigService.AddTaskToGroup(_workspaceFolder, groupName, new Models.TaskGroupEntry
+            {
+                Source = node.Task.Source.DisplayName,
+                Task = node.Task.Label,
+            });
+
+            StatusText = $"Added '{taskName}' to group '{groupName}'";
+
+            // Refresh tree to show updated groups
+            _ = Task.Run(() => RefreshGroupsInTree());
+            return Task.CompletedTask;
+        });
+
+        // Start all tasks in a group
+        StartGroupCommand = new(async (parameter, ct) =>
+        {
+            if (parameter is not string groupName || string.IsNullOrEmpty(_workspaceFolder)) return;
+
+            var groups = _groupConfigService.LoadGroups(_workspaceFolder);
+            var group = groups.FirstOrDefault(g => g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+            if (group is null) return;
+
+            StatusText = $"Starting group: {groupName}...";
+
+            foreach (var entry in group.Tasks.OrderBy(t => t.Order))
+            {
+                var taskNode = FindTaskNode(entry.Task);
+                if (taskNode?.Task is null) continue;
+
+                taskNode.Status = Models.TaskStatus.Running;
+
+                if (entry.StartOrder == "parallel")
+                {
+                    _ = _taskRunner.StartAsync(taskNode.Task, _workspaceFolder);
+                }
+                else
+                {
+                    var started = await _taskRunner.StartAsync(taskNode.Task, _workspaceFolder).ConfigureAwait(false);
+                    if (!started)
+                    {
+                        taskNode.Status = Models.TaskStatus.Error;
+                        continue;
+                    }
+
+                    if (taskNode.Task.TaskType == TaskType.Normal)
+                    {
+                        while (_taskRunner.IsRunning(taskNode.Task))
+                        {
+                            await Task.Delay(200).ConfigureAwait(false);
+                        }
+                    }
+                }
+            }
+
+            StatusText = $"Running group: {groupName}";
+        });
+
+        // Stop all tasks in a group
+        StopGroupCommand = new(async (parameter, ct) =>
+        {
+            if (parameter is not string groupName || string.IsNullOrEmpty(_workspaceFolder)) return;
+
+            var groups = _groupConfigService.LoadGroups(_workspaceFolder);
+            var group = groups.FirstOrDefault(g => g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+            if (group is null) return;
+
+            StatusText = $"Stopping group: {groupName}...";
+
+            foreach (var entry in group.Tasks)
+            {
+                var taskNode = FindTaskNode(entry.Task);
+                if (taskNode?.Task is null) continue;
+
+                await _taskRunner.StopAsync(taskNode.Task).ConfigureAwait(false);
+                taskNode.Status = Models.TaskStatus.Idle;
+            }
+
+            StatusText = $"Stopped group: {groupName}";
+        });
+
+        // Create a new group
+        CreateGroupCommand = new((parameter, ct) =>
+        {
+            if (string.IsNullOrEmpty(_workspaceFolder)) return Task.CompletedTask;
+
+            // Create with a default name — user can rename later
+            var groups = _groupConfigService.LoadGroups(_workspaceFolder);
+            var name = "New Group";
+            var counter = 1;
+            while (groups.Any(g => g.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            {
+                name = $"New Group {counter++}";
+            }
+
+            _groupConfigService.SaveGroup(_workspaceFolder, new Models.TaskGroup { Name = name });
+            StatusText = $"Created group: {name}";
+            _ = Task.Run(() => RefreshGroupsInTree());
+            return Task.CompletedTask;
+        });
+
+        // Delete a group
+        DeleteGroupCommand = new((parameter, ct) =>
+        {
+            if (parameter is not string groupName || string.IsNullOrEmpty(_workspaceFolder)) return Task.CompletedTask;
+
+            _groupConfigService.DeleteGroup(_workspaceFolder, groupName);
+            StatusText = $"Deleted group: {groupName}";
+            _ = Task.Run(() => RefreshGroupsInTree());
+            return Task.CompletedTask;
+        });
     }
 
     [DataMember]
@@ -170,6 +294,21 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
     [DataMember]
     public AsyncCommand SelectNodeCommand { get; }
+
+    [DataMember]
+    public AsyncCommand AddToGroupCommand { get; }
+
+    [DataMember]
+    public AsyncCommand StartGroupCommand { get; }
+
+    [DataMember]
+    public AsyncCommand StopGroupCommand { get; }
+
+    [DataMember]
+    public AsyncCommand CreateGroupCommand { get; }
+
+    [DataMember]
+    public AsyncCommand DeleteGroupCommand { get; }
 
     private TaskTreeNode? _selectedNode;
 
@@ -240,12 +379,8 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 TreeItems.Add(configFilesRoot);
             }
 
-            // Run Groups root (Phase 3 — placeholder)
-            var groupsRoot = new TaskTreeNode("Run Groups", TreeIcons.RunGroups)
-            { SelectCommand = SelectNodeCommand };
-            groupsRoot.Children.Add(new TaskTreeNode("(Phase 3 — groups not yet implemented)")
-            { SelectCommand = SelectNodeCommand });
-            TreeItems.Add(groupsRoot);
+            // Run Groups
+            BuildGroupsTree();
 
             var taskCount = CountTasks(configFilesRoot);
             StatusText = $"Found {taskCount} task(s) from {configFilesRoot.Children.Count} source(s).";
@@ -283,6 +418,62 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         {
             node.Status = status;
         }
+    }
+
+    private void BuildGroupsTree()
+    {
+        // Remove existing groups root if present
+        var existingGroupsRoot = TreeItems.FirstOrDefault(n => n.Name == "Run Groups");
+        if (existingGroupsRoot is not null)
+        {
+            TreeItems.Remove(existingGroupsRoot);
+        }
+
+        var groupsRoot = new TaskTreeNode("Run Groups", TreeIcons.RunGroups)
+        { SelectCommand = SelectNodeCommand };
+
+        if (!string.IsNullOrEmpty(_workspaceFolder))
+        {
+            var groups = _groupConfigService.LoadGroups(_workspaceFolder);
+
+            foreach (var group in groups)
+            {
+                var groupNode = new TaskTreeNode(group.Name, TreeIcons.Group)
+                {
+                    SelectCommand = SelectNodeCommand,
+                    StartCommand = StartGroupCommand,
+                    StopCommand = StopGroupCommand,
+                };
+
+                foreach (var entry in group.Tasks.OrderBy(t => t.Order))
+                {
+                    var taskNode = FindTaskNode(entry.Task);
+                    var entryNode = new TaskTreeNode(entry.Task, taskNode?.Task is not null ? TreeIcons.TaskIdle : TreeIcons.ParseError)
+                    {
+                        Metadata = taskNode is null ? " (not found)" : $" ({entry.StartOrder})",
+                        SelectCommand = SelectNodeCommand,
+                    };
+                    groupNode.Children.Add(entryNode);
+                }
+
+                groupsRoot.Children.Add(groupNode);
+            }
+        }
+
+        // "New Group..." node
+        var newGroupNode = new TaskTreeNode("+ New Group...", TreeIcons.Group)
+        {
+            StartCommand = CreateGroupCommand,
+            SelectCommand = SelectNodeCommand,
+        };
+        groupsRoot.Children.Add(newGroupNode);
+
+        TreeItems.Add(groupsRoot);
+    }
+
+    private void RefreshGroupsInTree()
+    {
+        BuildGroupsTree();
     }
 
     private TaskTreeNode? FindTaskNode(string name)
@@ -401,6 +592,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         Metadata = metadata,
                         StartCommand = StartTaskCommand,
                         StopCommand = task.IsCompound ? null : StopTaskCommand,
+                        AddToGroupCommand = AddToGroupCommand,
                         SelectCommand = SelectNodeCommand,
                     };
                     sourceNode.Children.Add(taskNode);

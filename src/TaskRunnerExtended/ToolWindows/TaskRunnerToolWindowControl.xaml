@@ -83,7 +83,8 @@
                                                               IsEnabled="{Binding CanStop}" />
                                                     <Separator />
                                                     <MenuItem Header="Add to Group..."
-                                                              IsEnabled="False" />
+                                                              Command="{Binding AddToGroupCommand}"
+                                                              CommandParameter="{Binding Name}" />
                                                 </ContextMenu>
                                             </DockPanel.ContextMenu>
                                             <!-- Expand/collapse toggle -->

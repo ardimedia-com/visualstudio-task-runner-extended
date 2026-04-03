@@ -82,6 +82,10 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand? StopCommand { get; set; }
 
+    /// <summary>Command to add this task to a group.</summary>
+    [DataMember]
+    public IAsyncCommand? AddToGroupCommand { get; set; }
+
     /// <summary>Command to select this node (fired on right-click via vs:EventHandler).</summary>
     [DataMember]
     public IAsyncCommand? SelectCommand { get; set; }
