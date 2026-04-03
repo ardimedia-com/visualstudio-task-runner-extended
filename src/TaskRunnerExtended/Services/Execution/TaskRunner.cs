@@ -127,7 +127,8 @@ public class TaskRunner : IDisposable
                 return false;
             }
 
-            var runningTask = new RunningTask(task, process, processManager, outputChannel);
+            var problemMatcher = new ProblemMatcher();
+            var runningTask = new RunningTask(task, process, processManager, outputChannel, problemMatcher);
             _runningTasks[taskKey] = runningTask;
 
             // Stream output async (fire-and-forget)
@@ -232,11 +233,15 @@ public class TaskRunner : IDisposable
         try
         {
             // Read stdout and stderr in parallel
+            var matcher = running.ProblemMatcher;
+
             var stdoutTask = Task.Run(async () =>
             {
                 while (await process.StandardOutput.ReadLineAsync().ConfigureAwait(false) is { } line)
                 {
-                    await writer.WriteLineAsync(StripAnsi(line)).ConfigureAwait(false);
+                    var clean = StripAnsi(line);
+                    matcher.AnalyzeLine(clean);
+                    await writer.WriteLineAsync(clean).ConfigureAwait(false);
                 }
             });
 
@@ -244,22 +249,33 @@ public class TaskRunner : IDisposable
             {
                 while (await process.StandardError.ReadLineAsync().ConfigureAwait(false) is { } line)
                 {
-                    await writer.WriteLineAsync(StripAnsi(line)).ConfigureAwait(false);
+                    var clean = StripAnsi(line);
+                    matcher.AnalyzeLine(clean);
+                    await writer.WriteLineAsync(clean).ConfigureAwait(false);
                 }
             });
 
             await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
             await process.WaitForExitAsync().ConfigureAwait(false);
 
-            // Report completion
+            // Report completion with problem summary
             var exitCode = process.ExitCode;
             await writer.WriteLineAsync(string.Empty).ConfigureAwait(false);
+
+            var problemSummary = matcher.GetSummary();
+            if (!string.IsNullOrEmpty(problemSummary))
+            {
+                await writer.WriteLineAsync($"--- Problems: {problemSummary} ---").ConfigureAwait(false);
+            }
+
             await writer.WriteLineAsync($"--- Task exited with code {exitCode} ---").ConfigureAwait(false);
 
             // Don't report Error if the task was manually stopped (force kill gives non-zero exit code)
             if (!running.WasStopped)
             {
-                var status = exitCode == 0 ? Models.TaskStatus.Idle : Models.TaskStatus.Error;
+                var status = (exitCode != 0 || matcher.HasErrors)
+                    ? Models.TaskStatus.Error
+                    : Models.TaskStatus.Idle;
                 TaskStatusChanged?.Invoke(running.Task, status);
             }
 
@@ -301,7 +317,8 @@ public class TaskRunner : IDisposable
         TaskItem Task,
         Process Process,
         ProcessTreeManager ProcessManager,
-        Microsoft.VisualStudio.Extensibility.Documents.OutputChannel OutputChannel)
+        Microsoft.VisualStudio.Extensibility.Documents.OutputChannel OutputChannel,
+        ProblemMatcher ProblemMatcher)
     {
         /// <summary>Set to true when Stop is called manually — prevents Error status on non-zero exit.</summary>
         public bool WasStopped { get; set; }

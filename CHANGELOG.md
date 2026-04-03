@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Phase 4: Advanced Output)
+
+- **ProblemMatcher**: Detects errors and warnings in task output (MSBuild, TypeScript, npm, "Build FAILED" patterns)
+- **Problem Summary**: Shows "--- Problems: X error(s), Y warning(s) ---" at end of task output
+- **Error Detection**: Task status changes to Error when problems detected (even with exit code 0)
+
 ### Added (Phase 3: Grouping)
 
 - **TaskGroup model**: TaskGroup, TaskGroupEntry, TaskGroupConfig
