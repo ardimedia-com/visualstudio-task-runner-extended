@@ -1,4 +1,11 @@
 {
   "TaskRunnerExtended.OpenToolWindowCommand.DisplayName": "Task Runner Extended",
-  "TaskRunnerExtended.OpenToolWindowCommand.TooltipText": "Open the Task Runner Extended tool window"
+  "TaskRunnerExtended.OpenToolWindowCommand.TooltipText": "Open the Task Runner Extended tool window",
+  "TaskRunnerExtended.Toolbar.DisplayName": "Task Runner Extended",
+  "TaskRunnerExtended.RefreshCommand.DisplayName": "Refresh",
+  "TaskRunnerExtended.RefreshCommand.TooltipText": "Rescan all task source files",
+  "TaskRunnerExtended.StopAllCommand.DisplayName": "Stop All",
+  "TaskRunnerExtended.StopAllCommand.TooltipText": "Stop all running tasks",
+  "TaskRunnerExtended.CollapseAllCommand.DisplayName": "Collapse All",
+  "TaskRunnerExtended.CollapseAllCommand.TooltipText": "Collapse all nodes in the tree"
 }

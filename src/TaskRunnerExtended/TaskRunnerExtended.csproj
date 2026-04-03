@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TaskRunnerExtended</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- VSIX Extension properties -->
     <IsVisualStudioExtension>true</IsVisualStudioExtension>
@@ -31,11 +32,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ardimedia.VsExtensions.Common" Version="1.0.*" />
+    <PackageReference Include="Ardimedia.VsExtensions.Common" Version="1.0.8" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Images\TaskRunnerExtended.*.png" />
+    <EmbeddedResource Include="Images\TreeIcons\*.png" />
   </ItemGroup>
 
   <ItemGroup>

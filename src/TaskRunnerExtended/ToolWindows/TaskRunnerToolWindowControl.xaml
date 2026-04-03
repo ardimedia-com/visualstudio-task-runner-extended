@@ -3,60 +3,153 @@
               xmlns:vs="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml"
               xmlns:styles="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
               xmlns:colors="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0">
-    <Grid>
-        <Grid.Resources>
-            <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
-            </Style>
-        </Grid.Resources>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0"
-                   Text="Task Runner Extended — Phase 1 Spike"
-                   FontSize="13"
-                   FontWeight="SemiBold"
-                   Margin="8,8,8,4" />
-
-        <!-- Spike 1: TreeView with HierarchicalDataTemplate -->
-        <!-- Spike 2: ContextMenu on tree items -->
-        <TreeView Grid.Row="1"
-                  ItemsSource="{Binding SpikeTreeItems}"
-                  Margin="4"
-                  Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}">
+        <!-- Task tree -->
+        <TreeView Grid.Row="0"
+                  ItemsSource="{Binding TreeItems}"
+                  Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
+                  BorderThickness="0"
+                  Padding="0">
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <TextBlock>
-                        <TextBlock.ContextMenu>
+                    <StackPanel Orientation="Horizontal" Margin="0,1,4,1">
+                        <!-- Node icon -->
+                        <vs:Image Source="{Binding Icon}"
+                                  Width="16" Height="16"
+                                  Margin="0,0,4,0"
+                                  VerticalAlignment="Center" />
+
+                        <!-- Task/Node name -->
+                        <TextBlock Text="{Binding Name, Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                        <!-- Metadata -->
+                        <TextBlock Text="{Binding Metadata, Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   Margin="4,0,0,0"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="IsExpanded" Value="True" />
+                    <Setter Property="Padding" Value="2,1" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    <!-- Context menu on the TreeViewItem itself — right-click auto-selects -->
+                    <Setter Property="ContextMenu">
+                        <Setter.Value>
                             <ContextMenu>
                                 <MenuItem Header="Start"
-                                          Command="{Binding DataContext.SpikeContextMenuCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                          Command="{Binding StartCommand}"
                                           CommandParameter="{Binding Name}" />
                                 <MenuItem Header="Stop"
-                                          Command="{Binding DataContext.SpikeContextMenuCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                          Command="{Binding StopCommand}"
                                           CommandParameter="{Binding Name}" />
                                 <Separator />
                                 <MenuItem Header="Add to Group..."
-                                          Command="{Binding DataContext.SpikeContextMenuCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
-                                          CommandParameter="{Binding Name}" />
+                                          IsEnabled="False" />
                             </ContextMenu>
-                        </TextBlock.ContextMenu>
-                        <Run Text="{Binding Icon, Mode=OneWay}" FontWeight="Bold" />
-                        <Run Text=" " />
-                        <Run Text="{Binding Name, Mode=OneWay}" />
-                    </TextBlock>
-                </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TreeViewItem">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Item row: full-width background starting from left edge -->
+                                    <Border x:Name="ItemBorder"
+                                            Grid.Row="0"
+                                            Background="Transparent"
+                                            Padding="0,1"
+                                            Margin="-200,0,0,0"
+                                            SnapsToDevicePixels="True">
+                                        <DockPanel Margin="200,0,0,0">
+                                            <!-- Expand/collapse toggle -->
+                                            <ToggleButton x:Name="Expander"
+                                                          DockPanel.Dock="Left"
+                                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                                          ClickMode="Press"
+                                                          Width="16" Height="16"
+                                                          Margin="0,0,2,0"
+                                                          Background="Transparent"
+                                                          BorderThickness="0"
+                                                          Focusable="False"
+                                                          VerticalAlignment="Center"
+                                                          Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                                                <ToggleButton.Style>
+                                                    <Style TargetType="ToggleButton">
+                                                        <Setter Property="Content" Value="▸" />
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter Property="Content" Value="▾" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ToggleButton.Style>
+                                            </ToggleButton>
+                                            <!-- Content -->
+                                            <ContentPresenter x:Name="PART_Header"
+                                                              ContentSource="Header"
+                                                              HorizontalAlignment="Stretch" />
+                                        </DockPanel>
+                                    </Border>
+
+                                    <!-- Children -->
+                                    <ItemsPresenter x:Name="ItemsHost"
+                                                    Grid.Row="1"
+                                                    Margin="16,0,0,0"
+                                                    Visibility="Collapsed" />
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsExpanded" Value="True">
+                                        <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                                    </Trigger>
+                                    <Trigger Property="HasItems" Value="False">
+                                        <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                                    </Trigger>
+                                    <!-- Hover: only the direct Border, not parent items -->
+                                    <MultiTrigger>
+                                        <MultiTrigger.Conditions>
+                                            <Condition SourceName="ItemBorder" Property="IsMouseDirectlyOver" Value="True" />
+                                        </MultiTrigger.Conditions>
+                                        <Setter TargetName="ItemBorder" Property="Background"
+                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}" />
+                                    </MultiTrigger>
+                                    <!-- Selected: full row highlight -->
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="ItemBorder" Property="Background"
+                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TreeView.ItemContainerStyle>
         </TreeView>
 
         <!-- Status bar -->
-        <TextBlock Grid.Row="2"
-                   Text="{Binding StatusText}"
-                   Margin="8,4,8,8"
-                   Opacity="0.7" />
+        <Border Grid.Row="1"
+                Background="{DynamicResource {x:Static styles:VsBrushes.CommandBarGradientBeginKey}}"
+                Padding="6,3">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="11"
+                       Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+        </Border>
     </Grid>
 </DataTemplate>
