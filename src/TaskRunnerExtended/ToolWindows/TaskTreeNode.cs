@@ -98,6 +98,10 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public string RemoveFromGroupParam { get; set; } = string.Empty;
 
+    /// <summary>Parameter for group commands (Start/Stop/Delete/Rename): "shared:GroupName" or "local:GroupName".</summary>
+    [DataMember]
+    public string GroupParam { get; set; } = string.Empty;
+
     /// <summary>Command to delete this group.</summary>
     [DataMember]
     public IAsyncCommand? DeleteCommand { get; set; }
@@ -105,6 +109,30 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     /// <summary>Command to rename this group.</summary>
     [DataMember]
     public IAsyncCommand? RenameCommand { get; set; }
+
+    /// <summary>Whether Start/Stop context menu items should be visible.</summary>
+    [DataMember]
+    public string StartStopVisibility { get; set; } = "Collapsed";
+
+    /// <summary>Whether the "Add to Group..." context menu item should be visible.</summary>
+    [DataMember]
+    public string AddToGroupVisibility { get; set; } = "Collapsed";
+
+    /// <summary>Whether the "Add Group..." context menu item should be visible.</summary>
+    [DataMember]
+    public string AddGroupVisibility { get; set; } = "Collapsed";
+
+    /// <summary>Command to add a new group to a file node.</summary>
+    [DataMember]
+    public IAsyncCommand? AddGroupCommand { get; set; }
+
+    /// <summary>Whether the "Remove from Group" context menu item should be visible.</summary>
+    [DataMember]
+    public string RemoveFromGroupVisibility { get; set; } = "Collapsed";
+
+    /// <summary>Whether group management items (Delete/Rename) should be visible.</summary>
+    [DataMember]
+    public string GroupManageVisibility { get; set; } = "Collapsed";
 
     /// <summary>Command to select this node (fired on right-click via vs:EventHandler).</summary>
     [DataMember]

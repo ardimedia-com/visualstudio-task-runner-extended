@@ -11,8 +11,15 @@ public static class ToolbarActionBus
     public static event Action? CollapseAllRequested;
     public static event Action<string>? TabChanged;
 
+    public static string ActiveTab { get; private set; } = "Tasks";
+
     public static void RequestRefresh() => RefreshRequested?.Invoke();
     public static void RequestStopAll() => StopAllRequested?.Invoke();
     public static void RequestCollapseAll() => CollapseAllRequested?.Invoke();
-    public static void RequestTabChange(string tab) => TabChanged?.Invoke(tab);
+
+    public static void RequestTabChange(string tab)
+    {
+        ActiveTab = tab;
+        TabChanged?.Invoke(tab);
+    }
 }

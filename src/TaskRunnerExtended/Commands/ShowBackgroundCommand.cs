@@ -15,13 +15,14 @@ public class ShowBackgroundCommand : ToggleCommand
     {
         TooltipText = "%TaskRunnerExtended.ShowBackgroundCommand.TooltipText%",
         Icon = new(ImageMoniker.KnownValues.StatusInformation, IconSettings.IconOnly),
-        Flags = CommandFlags.CanSelect,
+        Flags = CommandFlags.CanToggle,
     };
 
     public ShowBackgroundCommand(VisualStudioExtensibility extensibility)
         : base(extensibility)
     {
         ToolbarActionBus.TabChanged += OnTabChanged;
+        IsChecked = ToolbarActionBus.ActiveTab == "Background";
     }
 
     public override Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)

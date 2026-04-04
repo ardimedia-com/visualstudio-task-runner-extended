@@ -28,8 +28,8 @@ public class GroupConfigService
     /// </summary>
     public List<TaskGroup> LoadGroups(string solutionDirectory)
     {
-        var sharedGroups = LoadFile(Path.Combine(solutionDirectory, SharedFileName));
-        var localGroups = LoadFile(Path.Combine(solutionDirectory, LocalFileName));
+        var sharedGroups = LoadSharedGroups(solutionDirectory);
+        var localGroups = LoadLocalGroups(solutionDirectory);
 
         // Merge: local overrides shared by name
         var merged = new Dictionary<string, TaskGroup>(StringComparer.OrdinalIgnoreCase);
@@ -45,6 +45,22 @@ public class GroupConfigService
         }
 
         return merged.Values.ToList();
+    }
+
+    /// <summary>
+    /// Loads groups from the shared config file only.
+    /// </summary>
+    public List<TaskGroup> LoadSharedGroups(string solutionDirectory)
+    {
+        return LoadFile(Path.Combine(solutionDirectory, SharedFileName));
+    }
+
+    /// <summary>
+    /// Loads groups from the local config file only.
+    /// </summary>
+    public List<TaskGroup> LoadLocalGroups(string solutionDirectory)
+    {
+        return LoadFile(Path.Combine(solutionDirectory, LocalFileName));
     }
 
     /// <summary>
@@ -74,20 +90,21 @@ public class GroupConfigService
     }
 
     /// <summary>
-    /// Deletes a group from both shared and local config files.
+    /// Deletes a group from the specified config file.
     /// </summary>
-    public void DeleteGroup(string solutionDirectory, string groupName)
+    public void DeleteGroup(string solutionDirectory, string groupName, bool fromShared = false)
     {
-        DeleteGroupFromFile(Path.Combine(solutionDirectory, SharedFileName), groupName);
-        DeleteGroupFromFile(Path.Combine(solutionDirectory, LocalFileName), groupName);
+        var fileName = fromShared ? SharedFileName : LocalFileName;
+        DeleteGroupFromFile(Path.Combine(solutionDirectory, fileName), groupName);
     }
 
     /// <summary>
     /// Adds a task to an existing group, or creates the group if it doesn't exist.
     /// </summary>
-    public void AddTaskToGroup(string solutionDirectory, string groupName, TaskGroupEntry entry)
+    public void AddTaskToGroup(string solutionDirectory, string groupName, TaskGroupEntry entry, bool toShared = false)
     {
-        var filePath = Path.Combine(solutionDirectory, LocalFileName);
+        var fileName = toShared ? SharedFileName : LocalFileName;
+        var filePath = Path.Combine(solutionDirectory, fileName);
         var config = LoadConfig(filePath);
 
         var group = config.Groups.FirstOrDefault(g =>
@@ -110,11 +127,12 @@ public class GroupConfigService
     }
 
     /// <summary>
-    /// Removes a task from a group.
+    /// Removes a task from a group in the specified config file.
     /// </summary>
-    public void RemoveTaskFromGroup(string solutionDirectory, string groupName, string source, string taskLabel)
+    public void RemoveTaskFromGroup(string solutionDirectory, string groupName, string source, string taskLabel, bool fromShared = false)
     {
-        var filePath = Path.Combine(solutionDirectory, LocalFileName);
+        var fileName = fromShared ? SharedFileName : LocalFileName;
+        var filePath = Path.Combine(solutionDirectory, fileName);
         var config = LoadConfig(filePath);
 
         var group = config.Groups.FirstOrDefault(g =>

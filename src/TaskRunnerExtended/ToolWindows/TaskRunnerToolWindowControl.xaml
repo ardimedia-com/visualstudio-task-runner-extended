@@ -3,6 +3,17 @@
               xmlns:vs="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml"
               xmlns:styles="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
               xmlns:colors="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0">
+    <DataTemplate.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="SelectableText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+        </Style>
+    </DataTemplate.Resources>
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -13,7 +24,7 @@
         <!-- TAB: Tasks (tree + details) -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="0"
-              Visibility="{Binding ShowTasks, Converter={vs:BooleanToVisibilityConverter}}">
+              Visibility="{Binding ShowTasks, Converter={StaticResource BoolToVis}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -89,26 +100,34 @@
                                                     <ContextMenu>
                                                         <MenuItem Header="Start"
                                                                   Command="{Binding StartCommand}"
-                                                                  CommandParameter="{Binding Name}"
-                                                                  IsEnabled="{Binding CanStart}" />
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  IsEnabled="{Binding CanStart}"
+                                                                  Visibility="{Binding StartStopVisibility}" />
                                                         <MenuItem Header="Stop"
                                                                   Command="{Binding StopCommand}"
-                                                                  CommandParameter="{Binding Name}"
-                                                                  IsEnabled="{Binding CanStop}" />
-                                                        <Separator />
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  IsEnabled="{Binding CanStop}"
+                                                                  Visibility="{Binding StartStopVisibility}" />
                                                         <MenuItem Header="Add to Group..."
                                                                   Command="{Binding AddToGroupCommand}"
-                                                                  CommandParameter="{Binding Name}" />
+                                                                  CommandParameter="{Binding Name}"
+                                                                  Visibility="{Binding AddToGroupVisibility}" />
+                                                        <MenuItem Header="Add Group..."
+                                                                  Command="{Binding AddGroupCommand}"
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  Visibility="{Binding AddGroupVisibility}" />
                                                         <MenuItem Header="Remove from Group"
                                                                   Command="{Binding RemoveFromGroupCommand}"
-                                                                  CommandParameter="{Binding RemoveFromGroupParam}" />
-                                                        <Separator />
+                                                                  CommandParameter="{Binding RemoveFromGroupParam}"
+                                                                  Visibility="{Binding RemoveFromGroupVisibility}" />
                                                         <MenuItem Header="Rename Group..."
                                                                   Command="{Binding RenameCommand}"
-                                                                  CommandParameter="{Binding Name}" />
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  Visibility="{Binding GroupManageVisibility}" />
                                                         <MenuItem Header="Delete Group"
                                                                   Command="{Binding DeleteCommand}"
-                                                                  CommandParameter="{Binding Name}" />
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  Visibility="{Binding GroupManageVisibility}" />
                                                     </ContextMenu>
                                                 </DockPanel.ContextMenu>
                                                 <!-- Expand/collapse toggle -->
@@ -186,7 +205,7 @@
                     BorderBrush="{DynamicResource {x:Static styles:VsBrushes.PanelBorderKey}}"
                     BorderThickness="0,1,0,0"
                     Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
-                    Visibility="{Binding HasDetails, Converter={vs:BooleanToVisibilityConverter}}">
+                    Visibility="{Binding HasDetails, Converter={StaticResource BoolToVis}}">
                 <StackPanel Margin="8,6,8,6">
                     <!-- Header: Name - Status -->
                     <TextBlock Margin="0,0,0,6"
@@ -197,10 +216,10 @@
                     </TextBlock>
 
                     <!-- Source file -->
-                    <TextBlock Text="{Binding DetailSource, Mode=OneWay}"
-                               FontSize="11"
-                               Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"
-                               Margin="0,0,0,6" />
+                    <TextBox Text="{Binding DetailSource, Mode=OneWay}"
+                             Style="{StaticResource SelectableText}"
+                             Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"
+                             Margin="0,0,0,6" />
 
                     <!-- Detail grid -->
                     <Grid>
@@ -217,26 +236,25 @@
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Command:"
                                    FontSize="11" Margin="0,0,10,2"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
-                        <TextBlock Grid.Row="0" Grid.Column="1"
-                                   Text="{Binding DetailCommand, Mode=OneWay}"
-                                   FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding DetailCommand, Mode=OneWay}"
+                                 Style="{StaticResource SelectableText}"
+                                 TextWrapping="Wrap" Margin="0,0,0,2" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Directory:"
                                    FontSize="11" Margin="0,0,10,2"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
-                        <TextBlock Grid.Row="1" Grid.Column="1"
-                                   Text="{Binding DetailWorkingDir, Mode=OneWay}"
-                                   FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 Text="{Binding DetailWorkingDir, Mode=OneWay}"
+                                 Style="{StaticResource SelectableText}"
+                                 TextWrapping="Wrap" Margin="0,0,0,2" />
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Type:"
                                    FontSize="11" Margin="0,0,10,0"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
-                        <TextBlock Grid.Row="2" Grid.Column="1"
-                                   Text="{Binding DetailType, Mode=OneWay}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Text="{Binding DetailType, Mode=OneWay}"
+                                 Style="{StaticResource SelectableText}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -248,7 +266,7 @@
         <ScrollViewer Grid.Row="0"
                       VerticalScrollBarVisibility="Auto"
                       Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
-                      Visibility="{Binding ShowBackground, Converter={vs:BooleanToVisibilityConverter}}">
+                      Visibility="{Binding ShowBackground, Converter={StaticResource BoolToVis}}">
             <StackPanel Margin="12,10,12,10">
                 <TextBlock Text="Task Runner Extended"
                            FontSize="16" FontWeight="Bold" Margin="0,0,0,8"
@@ -306,6 +324,29 @@
                                Text="Auto-refresh when configuration files change" />
                 </StackPanel>
 
+                <TextBlock Text="Run Groups" FontWeight="Bold" Margin="0,0,0,6"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <StackPanel Margin="8,0,0,12">
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2" TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold">Shared (commited)</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — task-runner-extended-am.json, shared with the team via git</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2" TextWrapping="Wrap">
+                        <Run FontWeight="SemiBold">Local (not commited)</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — task-runner-extended-am.local.json, personal per-user settings</Run>
+                    </TextBlock>
+                </StackPanel>
+
+                <Border BorderBrush="{DynamicResource {x:Static styles:VsBrushes.PanelBorderKey}}"
+                        BorderThickness="1" Padding="10,8" Margin="0,0,0,12">
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                        <Run FontWeight="SemiBold">Important:</Run>
+                        <Run> Add *.local.json to your .gitignore to prevent local group settings from being committed to the repository.</Run>
+                    </TextBlock>
+                </Border>
+
                 <TextBlock Text="How It Works" FontWeight="Bold" Margin="0,0,0,6"
                            Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
@@ -320,75 +361,111 @@
         </ScrollViewer>
 
         <!-- ═══════════════════════════════════════════════════════════ -->
-        <!-- TAB: Feedback (GitHub issue form) -->
+        <!-- TAB: Feedback (GitHub issue form + extension info) -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         <ScrollViewer Grid.Row="0"
                       VerticalScrollBarVisibility="Auto"
                       Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
-                      Visibility="{Binding ShowFeedback, Converter={vs:BooleanToVisibilityConverter}}">
+                      Visibility="{Binding ShowFeedback, Converter={StaticResource BoolToVis}}">
             <StackPanel Margin="12,10,12,10">
                 <TextBlock Text="Report an Issue or Suggest a Feature"
-                           FontSize="14" FontWeight="Bold" Margin="0,0,0,4"
+                           FontWeight="Bold" Margin="0,0,0,6"
                            Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
-                <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" FontSize="11"
-                           Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}">
-                    This will open a pre-filled GitHub issue in your browser.
-                </TextBlock>
+                <Border BorderBrush="{DynamicResource {x:Static styles:VsBrushes.PanelBorderKey}}"
+                        BorderThickness="1" Padding="10,8" Margin="0,0,0,0">
+                    <StackPanel>
+                        <!-- Type selection -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <RadioButton Content="Bug Report" GroupName="FeedbackType" IsChecked="True"
+                                         Margin="0,0,16,0"
+                                         Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                                <vs:ExtensibilityUICommands.EventHandlers>
+                                    <vs:EventHandlerCollection>
+                                        <vs:EventHandler Event="Checked"
+                                                         Command="{Binding SubmitFeedbackCommand}"
+                                                         CommandParameter="SetTypeBug" />
+                                    </vs:EventHandlerCollection>
+                                </vs:ExtensibilityUICommands.EventHandlers>
+                            </RadioButton>
+                            <RadioButton Content="Feature Request" GroupName="FeedbackType"
+                                         Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                                <vs:ExtensibilityUICommands.EventHandlers>
+                                    <vs:EventHandlerCollection>
+                                        <vs:EventHandler Event="Checked"
+                                                         Command="{Binding SubmitFeedbackCommand}"
+                                                         CommandParameter="SetTypeFeature" />
+                                    </vs:EventHandlerCollection>
+                                </vs:ExtensibilityUICommands.EventHandlers>
+                            </RadioButton>
+                        </StackPanel>
 
-                <!-- Type selection -->
-                <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,0,0,4"
+                        <!-- Title -->
+                        <TextBlock Text="Title" FontWeight="SemiBold" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                        <TextBox Text="{Binding FeedbackTitle, Mode=TwoWay}"
+                                 Margin="0,0,0,10" Padding="4,3" />
+
+                        <!-- Description -->
+                        <TextBlock Text="Description" FontWeight="SemiBold" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                        <TextBox Text="{Binding FeedbackBody, Mode=TwoWay}"
+                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="100" MaxHeight="200"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Margin="0,0,0,12" Padding="4,3" />
+
+                        <!-- Submit button -->
+                        <Button Padding="12,5" HorizontalAlignment="Left"
+                                Command="{Binding SubmitFeedbackCommand}">
+                            <TextBlock Text="Open Browser for GitHub Issue" />
+                        </Button>
+
+                        <!-- Status message -->
+                        <TextBlock Text="{Binding FeedbackStatus, Mode=OneWay}"
+                                   FontSize="11" Margin="0,6,0,0"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Extension Info -->
+                <TextBlock Text="Extension Info" FontWeight="Bold" Margin="0,20,0,6"
                            Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <RadioButton Content="Bug Report" GroupName="FeedbackType" IsChecked="True"
-                                 Margin="0,0,16,0"
-                                 Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
-                        <vs:ExtensibilityUICommands.EventHandlers>
-                            <vs:EventHandlerCollection>
-                                <vs:EventHandler Event="Checked"
-                                                 Command="{Binding SubmitFeedbackCommand}"
-                                                 CommandParameter="SetTypeBug" />
-                            </vs:EventHandlerCollection>
-                        </vs:ExtensibilityUICommands.EventHandlers>
-                    </RadioButton>
-                    <RadioButton Content="Feature Request" GroupName="FeedbackType"
-                                 Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
-                        <vs:ExtensibilityUICommands.EventHandlers>
-                            <vs:EventHandlerCollection>
-                                <vs:EventHandler Event="Checked"
-                                                 Command="{Binding SubmitFeedbackCommand}"
-                                                 CommandParameter="SetTypeFeature" />
-                            </vs:EventHandlerCollection>
-                        </vs:ExtensibilityUICommands.EventHandlers>
-                    </RadioButton>
-                </StackPanel>
 
-                <!-- Title -->
-                <TextBlock Text="Title" FontWeight="SemiBold" Margin="0,0,0,4"
-                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
-                <TextBox Text="{Binding FeedbackTitle, Mode=TwoWay}"
-                         Margin="0,0,0,10" Padding="4,3" />
+                <Border BorderBrush="{DynamicResource {x:Static styles:VsBrushes.PanelBorderKey}}"
+                        BorderThickness="1" Padding="10,8" Margin="0,0,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                <!-- Description -->
-                <TextBlock Text="Description" FontWeight="SemiBold" Margin="0,0,0,4"
-                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
-                <TextBox Text="{Binding FeedbackBody, Mode=TwoWay}"
-                         AcceptsReturn="True" TextWrapping="Wrap"
-                         MinHeight="80" MaxHeight="200"
-                         VerticalScrollBarVisibility="Auto"
-                         Margin="0,0,0,12" Padding="4,3" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Version:"
+                                   Margin="0,0,16,4"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding ExtensionVersion, Mode=OneWay}"
+                                 Style="{StaticResource SelectableText}" Margin="0,0,0,4" />
 
-                <!-- Submit button -->
-                <Button Padding="12,5" HorizontalAlignment="Left"
-                        Command="{Binding SubmitFeedbackCommand}"
-                        CommandParameter="Submit">
-                    <TextBlock Text="Open on GitHub" />
-                </Button>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Publisher:"
+                                   Margin="0,0,16,4"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="Ardimedia"
+                                   Margin="0,0,0,4"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
-                <!-- Status message -->
-                <TextBlock Text="{Binding FeedbackStatus, Mode=OneWay}"
-                           FontSize="11" Margin="0,6,0,0"
-                           Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="License:"
+                                   Margin="0,0,16,0"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="MIT"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                    </Grid>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 

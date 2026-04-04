@@ -10,10 +10,11 @@
     <!-- VSIX Extension properties -->
     <IsVisualStudioExtension>true</IsVisualStudioExtension>
     <VssdkCompatibleExtension>false</VssdkCompatibleExtension>
+    <DeployExtension Condition="'$(Configuration)' == 'Debug' and '$(BuildingInsideVisualStudio)' == 'true'">true</DeployExtension>
     <NoWarn>$(NoWarn);VSEXTPREVIEW_OUTPUTWINDOW</NoWarn>
 
     <!-- Package / Marketplace metadata -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>Ardimedia</Authors>
     <Company>Ardimedia</Company>
     <Product>Task Runner Extended</Product>

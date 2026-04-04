@@ -15,14 +15,14 @@ public class ShowTasksCommand : ToggleCommand
     {
         TooltipText = "%TaskRunnerExtended.ShowTasksCommand.TooltipText%",
         Icon = new(ImageMoniker.KnownValues.TaskList, IconSettings.IconOnly),
-        Flags = CommandFlags.CanSelect,
+        Flags = CommandFlags.CanToggle,
     };
 
     public ShowTasksCommand(VisualStudioExtensibility extensibility)
         : base(extensibility)
     {
-        IsChecked = true; // Tasks tab is active by default
         ToolbarActionBus.TabChanged += OnTabChanged;
+        IsChecked = true;
     }
 
     public override Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)

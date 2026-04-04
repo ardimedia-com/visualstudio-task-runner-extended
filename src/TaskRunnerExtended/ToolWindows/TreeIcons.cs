@@ -21,7 +21,7 @@ public static class TreeIcons
     public const string Folder = "KnownMonikers.FolderOpened";
 
     // Group
-    public const string Group = "KnownMonikers.GroupByType";
+    public const string Group = "KnownMonikers.FolderOpened";
 
     // Compound task
     public const string CompoundTask = "KnownMonikers.GroupByType";
@@ -41,16 +41,5 @@ public static class TreeIcons
     /// <summary>
     /// Returns the icon string for a given source kind.
     /// </summary>
-    public static string ForSourceKind(Models.TaskSourceKind kind) => kind switch
-    {
-        Models.TaskSourceKind.TasksJson => Json,
-        Models.TaskSourceKind.TasksVsJson => Json,
-        Models.TaskSourceKind.PackageJson => Npm,
-        Models.TaskSourceKind.Csproj => Csproj,
-        Models.TaskSourceKind.LaunchSettings => Launch,
-        Models.TaskSourceKind.Gruntfile => Grunt,
-        Models.TaskSourceKind.Gulpfile => Gulp,
-        Models.TaskSourceKind.ComposeYml => Docker,
-        _ => Folder,
-    };
+    public static string ForSourceKind(Models.TaskSourceKind kind) => Folder;
 }

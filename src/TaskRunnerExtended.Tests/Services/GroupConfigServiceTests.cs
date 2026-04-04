@@ -103,15 +103,19 @@ public class GroupConfigServiceTests
     }
 
     [TestMethod]
-    public void DeleteGroup_RemovesFromBothFiles()
+    public void DeleteGroup_RemovesFromTargetFile()
     {
         _service.SaveGroup(_tempDir, new TaskGroup { Name = "Dev" }, toShared: true);
         _service.SaveGroup(_tempDir, new TaskGroup { Name = "Dev" });
 
-        _service.DeleteGroup(_tempDir, "Dev");
+        // Delete from local only
+        _service.DeleteGroup(_tempDir, "Dev", fromShared: false);
+        Assert.AreEqual(0, _service.LoadLocalGroups(_tempDir).Count);
+        Assert.AreEqual(1, _service.LoadSharedGroups(_tempDir).Count);
 
-        var groups = _service.LoadGroups(_tempDir);
-        Assert.AreEqual(0, groups.Count);
+        // Delete from shared
+        _service.DeleteGroup(_tempDir, "Dev", fromShared: true);
+        Assert.AreEqual(0, _service.LoadSharedGroups(_tempDir).Count);
     }
 
     [TestMethod]

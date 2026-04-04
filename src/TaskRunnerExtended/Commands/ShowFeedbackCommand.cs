@@ -14,14 +14,15 @@ public class ShowFeedbackCommand : ToggleCommand
     public override CommandConfiguration CommandConfiguration => new("%TaskRunnerExtended.ShowFeedbackCommand.DisplayName%")
     {
         TooltipText = "%TaskRunnerExtended.ShowFeedbackCommand.TooltipText%",
-        Icon = new(ImageMoniker.KnownValues.Feedback, IconSettings.IconOnly),
-        Flags = CommandFlags.CanSelect,
+        Icon = new(ImageMoniker.KnownValues.Feedback, IconSettings.IconAndText),
+        Flags = CommandFlags.CanToggle,
     };
 
     public ShowFeedbackCommand(VisualStudioExtensibility extensibility)
         : base(extensibility)
     {
         ToolbarActionBus.TabChanged += OnTabChanged;
+        IsChecked = ToolbarActionBus.ActiveTab == "Feedback";
     }
 
     public override Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken)

@@ -2,21 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2026-04-04
+## [0.3.0] - 2026-04-04
 
 ### Added
 
-- **Toolbar Tabs**: Three toggle buttons in the toolbar (Tasks, Background, Feedback) with active indicator, switching between content panels
-- **Details Pane**: Bottom panel showing selected task details (command, working directory, type, status) when clicking a task node
-- **Background Tab**: Extension info page showing supported task sources, features, and how it works
-- **Feedback Tab**: GitHub issue form with bug/feature type, title, description fields -- opens pre-filled issue in browser
+- **Shared/Local Group Files**: Run Groups tree now shows two sub-nodes: "Shared (commited)" and "Local (not commited)", each managing their own config file separately
+- **Add to Group file selection**: "Add to Group..." now prompts whether to save to the shared or local file before entering the group name
+- **Toolbar Tabs**: Three toggle buttons (Tasks, Background, Feedback) in the toolbar, switching between content panels
+- **Details Pane**: Bottom panel showing selected task details (command, working directory, type, status) with selectable/copyable text
+- **Background Tab**: Extension info page showing supported task sources, features, run group file documentation, and `.gitignore` guidance
+- **Feedback Tab**: GitHub issue form with Bug/Feature type toggle (auto-prefixes title with BUG:/FEATURE:), description pre-filled with version info, and Extension Info section
+- **Relative Source Paths**: Config file nodes show paths relative to workspace (e.g. `Bvd.Li.Web.Ui.Blazor/package.json` instead of just `package.json`)
 - **Left-click Selection**: Tree nodes are now selectable via left-click (previously right-click only)
+- **Empty Tree Structure**: Shows "Available Configuration Files" and "Run Groups" root nodes even before a solution is loaded
+- **Add Group on file nodes**: "Add Group..." context menu item on "Shared (commited)" and "Local (not commited)" nodes to create empty groups directly
+- **Start/Stop All on source files**: Right-click a source file node (e.g. `package.json`) to start or stop all tasks from that file
+- **Context menu visibility**: Menu items are now shown/hidden per node type (no more disabled items on irrelevant nodes)
+- **Debug Deployment**: Added `DeployExtension` property for experimental instance debugging
 
 ### Fixed
 
 - **Run Group Icons**: Task status icons (running/idle/error) now update correctly in the Run Groups tree, not just in Available Configuration Files
 - **Individual Task Start/Stop in Groups**: Group entry nodes now have Start/Stop context menu items with proper enabled/disabled state
 - **Group CanStart/CanStop**: Group-level start button is now disabled when tasks are already running
+- **Duplicate Source Nodes**: Config files with the same name in different directories (e.g. two `package.json`) now show as separate nodes with relative paths
+- **BooleanToVisibilityConverter**: Fixed XAML crash in Remote UI by using standard WPF converter
+
+### Changed
+
+- **Folder Icons**: All config file source nodes and group nodes now use consistent folder icons
+- **Group Delete/Rename**: Now targets only the specific file (shared or local) instead of both
 
 ### Removed
 

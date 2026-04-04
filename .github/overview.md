@@ -16,6 +16,8 @@ Visual Studio offers no way to start multiple background processes (e.g., `npm r
 - **Parallel + Sequential** -- start tasks in parallel or in sequence with dependency ordering
 - **Compound Tasks** -- VS Code-style `dependsOn` with `dependsOrder` support
 - **Background Task Management** -- see which processes are running, stop them individually or as a group
+- **Details Pane** -- click any task to see command, working directory, type, and status
+- **Toolbar Tabs** -- switch between Tasks, Background (extension info), and Feedback (GitHub issue form)
 - **Problem Matcher** -- detects errors and warnings in task output
 - **.NET Framework Support** -- both SDK-style and non-SDK-style `.csproj` projects
 - **Package Manager Detection** -- auto-detects npm, pnpm, or yarn via lock files
@@ -43,13 +45,19 @@ Visual Studio offers no way to start multiple background processes (e.g., `npm r
 
 ## Run Groups
 
-Run Groups bundle multiple tasks that should be started together:
+Run Groups bundle multiple tasks that should be started together. Groups are organized under two file nodes:
+
+- **Shared (commited)** -- `task-runner-extended-am.json`, shared with the team via git
+- **Local (not commited)** -- `task-runner-extended-am.local.json`, personal per-user settings
+
+To create a group:
 
 - Right-click a task > **Add to Group...**
+- Choose **Shared** or **Local** as the target file
 - Enter a group name (default: "Development")
 - Right-click the group > **Start** to start all tasks
 
-Groups are stored in `task-runner-extended-am.json` (shared) and `task-runner-extended-am.local.json` (per-user).
+Add `*.local.json` to your `.gitignore` to prevent local settings from being committed.
 
 ## Requirements
 

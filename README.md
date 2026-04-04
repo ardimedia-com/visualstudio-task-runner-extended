@@ -33,7 +33,7 @@ This extension solves that with a unified task view and one-click run groups.
 - **Toolbar** -- Refresh, Stop All, Collapse All + tab toggles (Tasks, Background, Feedback) with active indicator
 - **Details Pane** -- click any task to see command, working directory, type, and status
 - **Feedback Tab** -- report bugs or request features directly from the tool window (opens GitHub issue)
-- **Context Menu** -- Start, Stop, Add to Group, Rename Group, Delete Group, Remove from Group
+- **Context Menu** -- context-sensitive: Start/Stop on tasks, source files, and groups; Add to Group on tasks; Add Group on file nodes; Rename/Delete on groups; Remove from Group on entries
 - **VS User Prompts** -- input prompts for group names, confirmation for delete
 - **Output Window Pane** -- dedicated output pane per task with real-time streaming
 - **Process Tree Kill** -- Windows Job Objects ensure all child processes are terminated
@@ -70,21 +70,20 @@ This extension solves that with a unified task view and one-click run groups.
 
 ### Run Groups
 
-Run Groups bundle multiple tasks that should be started together:
+Run Groups bundle multiple tasks that should be started together. Groups are organized under two file nodes:
+
+- **Shared (commited)** -- `task-runner-extended-am.json`, shared with the team via git
+- **Local (not commited)** -- `task-runner-extended-am.local.json`, personal per-user settings
+
+To create a group:
 
 1. Right-click a task > **Add to Group...**
-2. Enter a group name (default: "Development") or use an existing one
-3. The group appears under **Run Groups** in the tree
-4. Right-click the group > **Start** to start all tasks in the group
+2. Choose **Shared** or **Local** as the target file
+3. Enter a group name (default: "Development") or use an existing one
+4. The group appears under the chosen file node in **Run Groups**
+5. Right-click the group > **Start** to start all tasks in the group
 
-Groups are stored in two files (both in the project/solution root):
-
-| File | Purpose | In Git? |
-|---|---|---|
-| `task-runner-extended-am.json` | Shared with team | Yes |
-| `task-runner-extended-am.local.json` | Per-user settings | No (gitignored via `*.local.json`) |
-
-Local groups override shared groups with the same name.
+**Important:** Add `*.local.json` to your `.gitignore` to prevent local group settings from being committed.
 
 ## Technical Details
 
