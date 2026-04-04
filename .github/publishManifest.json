@@ -3,7 +3,7 @@
   "identity": {
     "internalName": "TaskRunnerExtended"
   },
-  "overview": ".claude/overview.md",
+  "overview": "overview.md",
   "categories": ["coding", "build"],
   "publisher": "Ardimedia",
   "pricing": "Free",
