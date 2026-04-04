@@ -9,164 +9,388 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Task tree -->
-        <TreeView Grid.Row="0"
-                  ItemsSource="{Binding TreeItems}"
-                  Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
-                  BorderThickness="0"
-                  Padding="0">
-            <TreeView.ItemTemplate>
-                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <StackPanel Orientation="Horizontal" Margin="0,1,4,1">
-                        <!-- Node icon -->
-                        <vs:Image Source="{Binding Icon}"
-                                  Width="16" Height="16"
-                                  Margin="0,0,4,0"
-                                  VerticalAlignment="Center" />
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TAB: Tasks (tree + details) -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="0"
+              Visibility="{Binding ShowTasks, Converter={vs:BooleanToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                        <!-- Task/Node name -->
-                        <TextBlock Text="{Binding Name, Mode=OneWay}"
-                                   FontWeight="{Binding FontWeight}"
-                                   VerticalAlignment="Center"
+            <!-- Task tree -->
+            <TreeView Grid.Row="0"
+                      ItemsSource="{Binding TreeItems}"
+                      Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
+                      BorderThickness="0"
+                      Padding="0">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal" Margin="0,1,4,1">
+                            <!-- Node icon -->
+                            <vs:Image Source="{Binding Icon}"
+                                      Width="16" Height="16"
+                                      Margin="0,0,4,0"
+                                      VerticalAlignment="Center" />
+
+                            <!-- Task/Node name -->
+                            <TextBlock Text="{Binding Name, Mode=OneWay}"
+                                       FontWeight="{Binding FontWeight}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                            <!-- Metadata -->
+                            <TextBlock Text="{Binding Metadata, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,0,0"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True" />
+                        <Setter Property="Padding" Value="2,1" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TreeViewItem">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Item row: full-width background starting from left edge -->
+                                        <Border x:Name="ItemBorder"
+                                                Grid.Row="0"
+                                                Background="Transparent"
+                                                Padding="0,1"
+                                                Margin="-200,0,0,0"
+                                                SnapsToDevicePixels="True">
+                                            <DockPanel x:Name="HeaderPanel" Margin="200,0,0,0" Background="Transparent">
+                                                <!-- Click handlers: select node -->
+                                                <vs:ExtensibilityUICommands.EventHandlers>
+                                                    <vs:EventHandlerCollection>
+                                                        <vs:EventHandler Event="MouseLeftButtonDown"
+                                                                         Command="{Binding SelectCommand}"
+                                                                         CommandParameter="{Binding Name}" />
+                                                        <vs:EventHandler Event="MouseRightButtonDown"
+                                                                         Command="{Binding SelectCommand}"
+                                                                         CommandParameter="{Binding Name}" />
+                                                    </vs:EventHandlerCollection>
+                                                </vs:ExtensibilityUICommands.EventHandlers>
+                                                <DockPanel.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Start"
+                                                                  Command="{Binding StartCommand}"
+                                                                  CommandParameter="{Binding Name}"
+                                                                  IsEnabled="{Binding CanStart}" />
+                                                        <MenuItem Header="Stop"
+                                                                  Command="{Binding StopCommand}"
+                                                                  CommandParameter="{Binding Name}"
+                                                                  IsEnabled="{Binding CanStop}" />
+                                                        <Separator />
+                                                        <MenuItem Header="Add to Group..."
+                                                                  Command="{Binding AddToGroupCommand}"
+                                                                  CommandParameter="{Binding Name}" />
+                                                        <MenuItem Header="Remove from Group"
+                                                                  Command="{Binding RemoveFromGroupCommand}"
+                                                                  CommandParameter="{Binding RemoveFromGroupParam}" />
+                                                        <Separator />
+                                                        <MenuItem Header="Rename Group..."
+                                                                  Command="{Binding RenameCommand}"
+                                                                  CommandParameter="{Binding Name}" />
+                                                        <MenuItem Header="Delete Group"
+                                                                  Command="{Binding DeleteCommand}"
+                                                                  CommandParameter="{Binding Name}" />
+                                                    </ContextMenu>
+                                                </DockPanel.ContextMenu>
+                                                <!-- Expand/collapse toggle -->
+                                                <ToggleButton x:Name="Expander"
+                                                              DockPanel.Dock="Left"
+                                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              ClickMode="Press"
+                                                              Width="16" Height="16"
+                                                              Margin="0,0,2,0"
+                                                              Focusable="False"
+                                                              VerticalAlignment="Center">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border Background="Transparent" Padding="2">
+                                                                <TextBlock x:Name="Arrow"
+                                                                           Text="&#x25B8;"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center" />
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Arrow" Property="Text" Value="&#x25BE;" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+                                                <!-- Content -->
+                                                <ContentPresenter x:Name="PART_Header"
+                                                                  ContentSource="Header"
+                                                                  HorizontalAlignment="Stretch" />
+                                            </DockPanel>
+                                        </Border>
+
+                                        <!-- Children -->
+                                        <ItemsPresenter x:Name="ItemsHost"
+                                                        Grid.Row="1"
+                                                        Margin="16,0,0,0"
+                                                        Visibility="Collapsed" />
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsExpanded" Value="True">
+                                            <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                                        </Trigger>
+                                        <Trigger Property="HasItems" Value="False">
+                                            <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                                        </Trigger>
+                                        <!-- Hover: highlight when mouse is over this item's header row (not children) -->
+                                        <Trigger SourceName="HeaderPanel" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background"
+                                                    Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}" />
+                                        </Trigger>
+                                        <!-- Selected: full row highlight -->
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background"
+                                                    Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
+                                        </Trigger>
+                                        <!-- Custom selection (via right-click SelectCommand) -->
+                                        <DataTrigger Binding="{Binding IsNodeSelected}" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background"
+                                                    Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+            </TreeView>
+
+            <!-- Details pane -->
+            <Border Grid.Row="1"
+                    BorderBrush="{DynamicResource {x:Static styles:VsBrushes.PanelBorderKey}}"
+                    BorderThickness="0,1,0,0"
+                    Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
+                    Visibility="{Binding HasDetails, Converter={vs:BooleanToVisibilityConverter}}">
+                <StackPanel Margin="8,6,8,6">
+                    <!-- Header: Name - Status -->
+                    <TextBlock Margin="0,0,0,6"
+                               Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                        <Run Text="{Binding DetailName, Mode=OneWay}" FontWeight="Bold" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding DetailStatus, Mode=OneWay}" />
+                    </TextBlock>
+
+                    <!-- Source file -->
+                    <TextBlock Text="{Binding DetailSource, Mode=OneWay}"
+                               FontSize="11"
+                               Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"
+                               Margin="0,0,0,6" />
+
+                    <!-- Detail grid -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Command:"
+                                   FontSize="11" Margin="0,0,10,2"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1"
+                                   Text="{Binding DetailCommand, Mode=OneWay}"
+                                   FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
-                        <!-- Metadata -->
-                        <TextBlock Text="{Binding Metadata, Mode=OneWay}"
-                                   VerticalAlignment="Center"
-                                   Margin="4,0,0,0"
-                                   FontSize="11"
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Directory:"
+                                   FontSize="11" Margin="0,0,10,2"
                                    Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
-                    </StackPanel>
-                </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
-            <TreeView.ItemContainerStyle>
-                <Style TargetType="TreeViewItem">
-                    <Setter Property="IsExpanded" Value="True" />
-                    <Setter Property="Padding" Value="2,1" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    <Setter Property="HorizontalAlignment" Value="Stretch" />
-                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="TreeViewItem">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                    </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="1" Grid.Column="1"
+                                   Text="{Binding DetailWorkingDir, Mode=OneWay}"
+                                   FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
 
-                                    <!-- Item row: full-width background starting from left edge -->
-                                    <Border x:Name="ItemBorder"
-                                            Grid.Row="0"
-                                            Background="Transparent"
-                                            Padding="0,1"
-                                            Margin="-200,0,0,0"
-                                            SnapsToDevicePixels="True">
-                                        <DockPanel x:Name="HeaderPanel" Margin="200,0,0,0" Background="Transparent">
-                                            <!-- Right-click: select node + show context menu -->
-                                            <vs:ExtensibilityUICommands.EventHandlers>
-                                                <vs:EventHandlerCollection>
-                                                    <vs:EventHandler Event="MouseRightButtonDown"
-                                                                     Command="{Binding SelectCommand}"
-                                                                     CommandParameter="{Binding Name}" />
-                                                </vs:EventHandlerCollection>
-                                            </vs:ExtensibilityUICommands.EventHandlers>
-                                            <DockPanel.ContextMenu>
-                                                <ContextMenu>
-                                                    <MenuItem Header="Start"
-                                                              Command="{Binding StartCommand}"
-                                                              CommandParameter="{Binding Name}"
-                                                              IsEnabled="{Binding CanStart}" />
-                                                    <MenuItem Header="Stop"
-                                                              Command="{Binding StopCommand}"
-                                                              CommandParameter="{Binding Name}"
-                                                              IsEnabled="{Binding CanStop}" />
-                                                    <Separator />
-                                                    <MenuItem Header="Add to Group..."
-                                                              Command="{Binding AddToGroupCommand}"
-                                                              CommandParameter="{Binding Name}" />
-                                                    <MenuItem Header="Remove from Group"
-                                                              Command="{Binding RemoveFromGroupCommand}"
-                                                              CommandParameter="{Binding RemoveFromGroupParam}" />
-                                                    <Separator />
-                                                    <MenuItem Header="Rename Group..."
-                                                              Command="{Binding RenameCommand}"
-                                                              CommandParameter="{Binding Name}" />
-                                                    <MenuItem Header="Delete Group"
-                                                              Command="{Binding DeleteCommand}"
-                                                              CommandParameter="{Binding Name}" />
-                                                </ContextMenu>
-                                            </DockPanel.ContextMenu>
-                                            <!-- Expand/collapse toggle -->
-                                            <ToggleButton x:Name="Expander"
-                                                          DockPanel.Dock="Left"
-                                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
-                                                          ClickMode="Press"
-                                                          Width="16" Height="16"
-                                                          Margin="0,0,2,0"
-                                                          Focusable="False"
-                                                          VerticalAlignment="Center">
-                                                <ToggleButton.Template>
-                                                    <ControlTemplate TargetType="ToggleButton">
-                                                        <Border Background="Transparent" Padding="2">
-                                                            <TextBlock x:Name="Arrow"
-                                                                       Text="▸"
-                                                                       FontSize="11"
-                                                                       Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}"
-                                                                       HorizontalAlignment="Center"
-                                                                       VerticalAlignment="Center" />
-                                                        </Border>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsChecked" Value="True">
-                                                                <Setter TargetName="Arrow" Property="Text" Value="▾" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </ToggleButton.Template>
-                                            </ToggleButton>
-                                            <!-- Content -->
-                                            <ContentPresenter x:Name="PART_Header"
-                                                              ContentSource="Header"
-                                                              HorizontalAlignment="Stretch" />
-                                        </DockPanel>
-                                    </Border>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Type:"
+                                   FontSize="11" Margin="0,0,10,0"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1"
+                                   Text="{Binding DetailType, Mode=OneWay}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
 
-                                    <!-- Children -->
-                                    <ItemsPresenter x:Name="ItemsHost"
-                                                    Grid.Row="1"
-                                                    Margin="16,0,0,0"
-                                                    Visibility="Collapsed" />
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsExpanded" Value="True">
-                                        <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                    </Trigger>
-                                    <Trigger Property="HasItems" Value="False">
-                                        <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
-                                    </Trigger>
-                                    <!-- Hover: highlight when mouse is over this item's header row (not children) -->
-                                    <Trigger SourceName="HeaderPanel" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="ItemBorder" Property="Background"
-                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}" />
-                                    </Trigger>
-                                    <!-- Selected: full row highlight -->
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter TargetName="ItemBorder" Property="Background"
-                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
-                                    </Trigger>
-                                    <!-- Custom selection (via right-click SelectCommand) -->
-                                    <DataTrigger Binding="{Binding IsNodeSelected}" Value="True">
-                                        <Setter TargetName="ItemBorder" Property="Background"
-                                                Value="{DynamicResource {x:Static colors:EnvironmentColors.CommandBarMenuItemMouseOverBrushKey}}" />
-                                    </DataTrigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </TreeView.ItemContainerStyle>
-        </TreeView>
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TAB: Background (extension info) -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="0"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
+                      Visibility="{Binding ShowBackground, Converter={vs:BooleanToVisibilityConverter}}">
+            <StackPanel Margin="12,10,12,10">
+                <TextBlock Text="Task Runner Extended"
+                           FontSize="16" FontWeight="Bold" Margin="0,0,0,8"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,12"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                    Discovers and runs tasks from configuration files in your solution.
+                    Tasks can be started, stopped, and organized into groups.
+                </TextBlock>
+
+                <TextBlock Text="Supported Task Sources" FontWeight="Bold" Margin="0,0,0,6"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <StackPanel Margin="8,0,0,12">
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">.vscode/tasks.json</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — VS Code tasks (shell, process, compound)</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">.vs/tasks.vs.json</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — Visual Studio tasks</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">package.json</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — npm scripts (build, watch, test, ...)</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">*.csproj</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — MSBuild targets (Pre-Build, Post-Build, custom)</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">launchSettings.json</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — Launch profiles (Project, Executable)</Run>
+                    </TextBlock>
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2">
+                        <Run FontWeight="SemiBold">docker-compose.yml</Run>
+                        <Run Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}"> — Docker Compose services</Run>
+                    </TextBlock>
+                </StackPanel>
+
+                <TextBlock Text="Features" FontWeight="Bold" Margin="0,0,0,6"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <StackPanel Margin="8,0,0,12">
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2"
+                               Text="Start and stop tasks from context menu" />
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2"
+                               Text="Organize tasks into Run Groups (parallel or sequential)" />
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2"
+                               Text="Live status indicators (idle, running, error)" />
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2"
+                               Text="Output streamed to dedicated Output Window panes" />
+                    <TextBlock Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" Margin="0,2"
+                               Text="Auto-refresh when configuration files change" />
+                </StackPanel>
+
+                <TextBlock Text="How It Works" FontWeight="Bold" Margin="0,0,0,6"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <TextBlock TextWrapping="Wrap" Margin="8,0,0,0"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                    When a solution is opened, the extension scans the solution directory
+                    for supported configuration files. Each discovered file is parsed for
+                    task definitions and displayed in the tree. A file watcher monitors
+                    changes and automatically rescans when files are modified.
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TAB: Feedback (GitHub issue form) -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="0"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="{DynamicResource {x:Static styles:VsBrushes.ToolWindowBackgroundKey}}"
+                      Visibility="{Binding ShowFeedback, Converter={vs:BooleanToVisibilityConverter}}">
+            <StackPanel Margin="12,10,12,10">
+                <TextBlock Text="Report an Issue or Suggest a Feature"
+                           FontSize="14" FontWeight="Bold" Margin="0,0,0,4"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" FontSize="11"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}">
+                    This will open a pre-filled GitHub issue in your browser.
+                </TextBlock>
+
+                <!-- Type selection -->
+                <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,0,0,4"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <RadioButton Content="Bug Report" GroupName="FeedbackType" IsChecked="True"
+                                 Margin="0,0,16,0"
+                                 Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                        <vs:ExtensibilityUICommands.EventHandlers>
+                            <vs:EventHandlerCollection>
+                                <vs:EventHandler Event="Checked"
+                                                 Command="{Binding SubmitFeedbackCommand}"
+                                                 CommandParameter="SetTypeBug" />
+                            </vs:EventHandlerCollection>
+                        </vs:ExtensibilityUICommands.EventHandlers>
+                    </RadioButton>
+                    <RadioButton Content="Feature Request" GroupName="FeedbackType"
+                                 Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}">
+                        <vs:ExtensibilityUICommands.EventHandlers>
+                            <vs:EventHandlerCollection>
+                                <vs:EventHandler Event="Checked"
+                                                 Command="{Binding SubmitFeedbackCommand}"
+                                                 CommandParameter="SetTypeFeature" />
+                            </vs:EventHandlerCollection>
+                        </vs:ExtensibilityUICommands.EventHandlers>
+                    </RadioButton>
+                </StackPanel>
+
+                <!-- Title -->
+                <TextBlock Text="Title" FontWeight="SemiBold" Margin="0,0,0,4"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                <TextBox Text="{Binding FeedbackTitle, Mode=TwoWay}"
+                         Margin="0,0,0,10" Padding="4,3" />
+
+                <!-- Description -->
+                <TextBlock Text="Description" FontWeight="SemiBold" Margin="0,0,0,4"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.WindowTextKey}}" />
+                <TextBox Text="{Binding FeedbackBody, Mode=TwoWay}"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         MinHeight="80" MaxHeight="200"
+                         VerticalScrollBarVisibility="Auto"
+                         Margin="0,0,0,12" Padding="4,3" />
+
+                <!-- Submit button -->
+                <Button Padding="12,5" HorizontalAlignment="Left"
+                        Command="{Binding SubmitFeedbackCommand}"
+                        CommandParameter="Submit">
+                    <TextBlock Text="Open on GitHub" />
+                </Button>
+
+                <!-- Status message -->
+                <TextBlock Text="{Binding FeedbackStatus, Mode=OneWay}"
+                           FontSize="11" Margin="0,6,0,0"
+                           Foreground="{DynamicResource {x:Static styles:VsBrushes.GrayTextKey}}" />
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Status bar -->
         <Border Grid.Row="1"

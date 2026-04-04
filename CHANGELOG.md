@@ -2,7 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.2.0] - 2026-04-04
+
+### Added
+
+- **Toolbar Tabs**: Three toggle buttons in the toolbar (Tasks, Background, Feedback) with active indicator, switching between content panels
+- **Details Pane**: Bottom panel showing selected task details (command, working directory, type, status) when clicking a task node
+- **Background Tab**: Extension info page showing supported task sources, features, and how it works
+- **Feedback Tab**: GitHub issue form with bug/feature type, title, description fields -- opens pre-filled issue in browser
+- **Left-click Selection**: Tree nodes are now selectable via left-click (previously right-click only)
+
+### Fixed
+
+- **Run Group Icons**: Task status icons (running/idle/error) now update correctly in the Run Groups tree, not just in Available Configuration Files
+- **Individual Task Start/Stop in Groups**: Group entry nodes now have Start/Stop context menu items with proper enabled/disabled state
+- **Group CanStart/CanStop**: Group-level start button is now disabled when tasks are already running
+
+### Removed
+
+- **"+ New Group..." node**: Removed unused tree node (groups are created via "Add to Group..." context menu)
+- **CreateGroupCommand**: Removed unused command and associated prompt method
+
+## [0.1.1]
 
 ### Added (Phase 5: Polish and Marketplace)
 

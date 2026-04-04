@@ -30,7 +30,9 @@ This extension solves that with a unified task view and one-click run groups.
 - **File Watching** -- automatically refreshes when task source files change (500ms debounce)
 - **VS KnownMoniker Icons** -- native VS icons that adapt to all themes (Light, Dark, Blue, High Contrast)
 - **Solution Monitor** -- automatically scans when a solution is opened or changed
-- **Toolbar** -- Refresh, Stop All, Collapse All buttons in the tool window header
+- **Toolbar** -- Refresh, Stop All, Collapse All + tab toggles (Tasks, Background, Feedback) with active indicator
+- **Details Pane** -- click any task to see command, working directory, type, and status
+- **Feedback Tab** -- report bugs or request features directly from the tool window (opens GitHub issue)
 - **Context Menu** -- Start, Stop, Add to Group, Rename Group, Delete Group, Remove from Group
 - **VS User Prompts** -- input prompts for group names, confirmation for delete
 - **Output Window Pane** -- dedicated output pane per task with real-time streaming
@@ -61,9 +63,10 @@ This extension solves that with a unified task view and one-click run groups.
 2. Open the tool window: **Tools** > **Task Runner Extended**
 3. The tree shows all discovered tasks grouped by source file
 4. **Right-click** a task for options: Start, Stop, Add to Group
-5. Create **Run Groups** via "Add to Group..." or the "+ New Group..." node
+5. Create **Run Groups** via "Add to Group..." on any task
 6. **Right-click** a group to: Start All, Stop All, Rename, Delete
-7. Use the **toolbar** buttons for Refresh, Stop All, Collapse All
+7. Use the **toolbar** buttons: tab toggles (Tasks, Background, Feedback), Refresh, Stop All, Collapse All
+8. Click a task to see its **details** (command, directory, type) in the bottom pane
 
 ### Run Groups
 

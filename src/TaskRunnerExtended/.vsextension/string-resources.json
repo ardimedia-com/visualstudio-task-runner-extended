@@ -7,5 +7,11 @@
   "TaskRunnerExtended.StopAllCommand.DisplayName": "Stop All",
   "TaskRunnerExtended.StopAllCommand.TooltipText": "Stop all running tasks",
   "TaskRunnerExtended.CollapseAllCommand.DisplayName": "Collapse All",
-  "TaskRunnerExtended.CollapseAllCommand.TooltipText": "Collapse all nodes in the tree"
+  "TaskRunnerExtended.CollapseAllCommand.TooltipText": "Collapse all nodes in the tree",
+  "TaskRunnerExtended.ShowTasksCommand.DisplayName": "Tasks",
+  "TaskRunnerExtended.ShowTasksCommand.TooltipText": "Show task tree and details",
+  "TaskRunnerExtended.ShowBackgroundCommand.DisplayName": "Background",
+  "TaskRunnerExtended.ShowBackgroundCommand.TooltipText": "Show extension information",
+  "TaskRunnerExtended.ShowFeedbackCommand.DisplayName": "Feedback",
+  "TaskRunnerExtended.ShowFeedbackCommand.TooltipText": "Report an issue or suggest a feature"
 }

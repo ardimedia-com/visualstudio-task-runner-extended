@@ -32,6 +32,10 @@ public class TaskRunnerToolWindow : ToolWindow
     {
         Children =
         [
+            ToolbarChild.Command<ShowTasksCommand>(),
+            ToolbarChild.Command<ShowBackgroundCommand>(),
+            ToolbarChild.Command<ShowFeedbackCommand>(),
+            ToolbarChild.Separator,
             ToolbarChild.Command<RefreshCommand>(),
             ToolbarChild.Separator,
             ToolbarChild.Command<StopAllCommand>(),
