@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2026-04-05
+
+### Added
+
+- **Auto-discover dotnet CLI tasks**: `dotnet: watch` for web projects, `dotnet: test` and `dotnet: test (watch)` for test projects — auto-generated from .csproj SDK and PackageReferences
+
+### Fixed
+
+- **Resource leak on window close**: ViewModel now properly disposes TaskRunner, FileWatcher, and unsubscribes from static ToolbarActionBus events in Dispose()
+
 ## [0.3.0] - 2026-04-04
 
 ### Added

@@ -18,7 +18,7 @@ This extension solves that with a unified task view and one-click run groups.
 
 ## Features
 
-- **Task Discovery** -- discovers tasks from `.vscode/tasks.json`, `tasks.vs.json`, `package.json`, `.csproj` (MSBuild targets), `launchSettings.json`, and `compose.yml`
+- **Task Discovery** -- discovers tasks from `.vscode/tasks.json`, `tasks.vs.json`, `package.json`, `.csproj` (MSBuild targets + auto-generated `dotnet: watch`/`test`), `launchSettings.json`, and `compose.yml`
 - **Unified Tree View** -- all tasks from all sources in a single sidebar tool window (docked next to Solution Explorer)
 - **Run Groups** -- bundle tasks into groups (e.g., "Development" = docker db + css watcher + dotnet watch) and start them with one click
 - **Parallel + Sequential** -- start tasks in parallel or in sequence with dependency ordering

@@ -47,6 +47,56 @@ public class CsprojDiscoverer : ITaskDiscoverer
                         tasks.Add(task);
                     }
                 }
+
+                // Auto-discover standard .NET CLI tasks based on project type
+                if (isSdkStyle)
+                {
+                    var sdkValue = root.Attribute("Sdk")?.Value ?? string.Empty;
+                    var isWeb = sdkValue.Contains("Microsoft.NET.Sdk.Web", StringComparison.OrdinalIgnoreCase)
+                             || sdkValue.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", StringComparison.OrdinalIgnoreCase);
+                    var isTest = IsTestProject(root, ns);
+
+                    if (isWeb)
+                    {
+                        tasks.Add(new TaskItem
+                        {
+                            Label = "dotnet: watch",
+                            Command = "dotnet",
+                            Args = ["watch", "--project", Path.GetFileName(csprojPath)],
+                            WorkingDirectory = directory,
+                            IsShell = true,
+                            TaskType = Models.TaskType.Background,
+                            Source = source,
+                            Metadata = "background",
+                        });
+                    }
+
+                    if (isTest)
+                    {
+                        tasks.Add(new TaskItem
+                        {
+                            Label = "dotnet: test",
+                            Command = "dotnet",
+                            Args = ["test", Path.GetFileName(csprojPath)],
+                            WorkingDirectory = directory,
+                            IsShell = true,
+                            TaskType = Models.TaskType.Normal,
+                            Source = source,
+                        });
+
+                        tasks.Add(new TaskItem
+                        {
+                            Label = "dotnet: test (watch)",
+                            Command = "dotnet",
+                            Args = ["watch", "test", "--project", Path.GetFileName(csprojPath)],
+                            WorkingDirectory = directory,
+                            IsShell = true,
+                            TaskType = Models.TaskType.Background,
+                            Source = source,
+                            Metadata = "background",
+                        });
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -101,6 +151,31 @@ public class CsprojDiscoverer : ITaskDiscoverer
             Source = source,
             Metadata = metadata,
         };
+    }
+
+    private static bool IsTestProject(XElement root, XNamespace ns)
+    {
+        // Check <IsTestProject>true</IsTestProject>
+        foreach (var pg in root.Elements(ns + "PropertyGroup"))
+        {
+            var isTestProp = pg.Element(ns + "IsTestProject")?.Value;
+            if ("true".Equals(isTestProp, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        // Check for test framework PackageReferences
+        string[] testPackages = ["MSTest", "MSTest.Sdk", "Microsoft.NET.Test.Sdk", "xunit", "xunit.core", "NUnit", "NUnit3TestAdapter"];
+        foreach (var ig in root.Elements(ns + "ItemGroup"))
+        {
+            foreach (var pr in ig.Elements(ns + "PackageReference"))
+            {
+                var include = pr.Attribute("Include")?.Value;
+                if (include is not null && testPackages.Any(tp => tp.Equals(include, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? BuildMetadata(XElement target, bool isSdkStyle, string name)

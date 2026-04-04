@@ -66,39 +66,10 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _taskRunner = new TaskRunner(extensibility);
         _taskRunner.TaskStatusChanged += OnTaskStatusChanged;
 
-        // Subscribe to toolbar actions
-        ToolbarActionBus.RefreshRequested += () =>
-        {
-            StatusText = "Refreshing...";
-            _ = Task.Run(async () =>
-            {
-                try { await OnSolutionOpenedAsync(CancellationToken.None).ConfigureAwait(false); }
-                catch { /* ignore */ }
-            });
-        };
-        ToolbarActionBus.StopAllRequested += () =>
-        {
-            StatusText = "Stopping all tasks...";
-            _ = Task.Run(async () =>
-            {
-                await _taskRunner.StopAllAsync().ConfigureAwait(false);
-                // Reset all task node statuses
-                foreach (var node in _taskNodeMap.Values)
-                {
-                    node.Status = Models.TaskStatus.Idle;
-                }
-                RefreshGroupsInTree();
-                StatusText = "All tasks stopped.";
-            });
-        };
-
-        ToolbarActionBus.TabChanged += tab =>
-        {
-            _activeTab = tab;
-            ShowTasks = tab == "Tasks";
-            ShowBackground = tab == "Background";
-            ShowFeedback = tab == "Feedback";
-        };
+        // Subscribe to toolbar actions (named methods for cleanup in Dispose)
+        ToolbarActionBus.RefreshRequested += OnRefreshRequested;
+        ToolbarActionBus.StopAllRequested += OnStopAllRequested;
+        ToolbarActionBus.TabChanged += OnTabChanged;
 
         _fileWatcher = new FileWatcherService(() =>
         {
@@ -779,6 +750,57 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         HasDetails = false;
         BuildEmptyTree();
         StatusText = "No solution loaded";
+    }
+
+    private void OnRefreshRequested()
+    {
+        StatusText = "Refreshing...";
+        _ = Task.Run(async () =>
+        {
+            try { await OnSolutionOpenedAsync(CancellationToken.None).ConfigureAwait(false); }
+            catch { /* ignore */ }
+        });
+    }
+
+    private void OnStopAllRequested()
+    {
+        StatusText = "Stopping all tasks...";
+        _ = Task.Run(async () =>
+        {
+            await _taskRunner.StopAllAsync().ConfigureAwait(false);
+            foreach (var node in _taskNodeMap.Values)
+            {
+                node.Status = Models.TaskStatus.Idle;
+            }
+            RefreshGroupsInTree();
+            StatusText = "All tasks stopped.";
+        });
+    }
+
+    private void OnTabChanged(string tab)
+    {
+        _activeTab = tab;
+        ShowTasks = tab == "Tasks";
+        ShowBackground = tab == "Background";
+        ShowFeedback = tab == "Feedback";
+    }
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        // Unsubscribe from static event bus to prevent leaks
+        ToolbarActionBus.RefreshRequested -= OnRefreshRequested;
+        ToolbarActionBus.StopAllRequested -= OnStopAllRequested;
+        ToolbarActionBus.TabChanged -= OnTabChanged;
+
+        // Unsubscribe from instance events
+        _taskRunner.TaskStatusChanged -= OnTaskStatusChanged;
+
+        // Stop and dispose resources
+        _fileWatcher.Dispose();
+        _taskRunner.Dispose();
+
+        base.Dispose();
     }
 
     private void BuildEmptyTree()

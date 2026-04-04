@@ -14,7 +14,7 @@
     <NoWarn>$(NoWarn);VSEXTPREVIEW_OUTPUTWINDOW</NoWarn>
 
     <!-- Package / Marketplace metadata -->
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <Authors>Ardimedia</Authors>
     <Company>Ardimedia</Company>
     <Product>Task Runner Extended</Product>
@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ardimedia.VsExtensions.Common" Version="1.0.8" />
+    <PackageReference Include="Ardimedia.VsExtensions.Common" Version="1.1.0" />
     <PackageReference Include="YamlDotNet" Version="16.*" />
   </ItemGroup>
 

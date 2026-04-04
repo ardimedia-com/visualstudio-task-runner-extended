@@ -50,7 +50,7 @@ public class CsprojDiscovererTests
         var discoverer = new CsprojDiscoverer();
         var result = await discoverer.DiscoverAsync(_tempDir, CancellationToken.None);
 
-        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual(3, result.Count); // 2 custom targets + 1 auto-discovered dotnet: watch
 
         var watch = result.First(t => t.Label == "msbuild: WatchTailwindCss");
         Assert.AreEqual("dotnet", watch.Command);
