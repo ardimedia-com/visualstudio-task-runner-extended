@@ -1,6 +1,6 @@
 ---
 status: Draft
-updated: 2026-04-03 23:45h
+updated: 2026-04-04 03:00h
 references:
   - .claude/reference-cli.md — CLI reference (dotnet, npm, docker, VS launch functions)
   - .claude/reference-task-config-files.md — Task configuration file formats
@@ -675,7 +675,7 @@ These patterns are proven in the existing Ardimedia extensions and should be reu
 
 ## Phases
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ COMPLETED
 
 Focus: Project setup, critical path validation, then tasks.json + .csproj discovery and task execution.
 
@@ -711,7 +711,7 @@ See "Technical Risks → Phase 1 Spike Results" for full results. Summary:
 
 **Not in Phase 1**: Compound tasks, additional task sources, grouping, extended variable resolution.
 
-### Phase 2: Multi-Source
+### Phase 2: Multi-Source ✅ COMPLETED
 
 All remaining task sources and compound tasks.
 
@@ -726,7 +726,7 @@ All remaining task sources and compound tasks.
 - Hierarchy discovery upward (parent directories, configurable depth)
 - Circular dependency detection
 
-### Phase 3: Grouping
+### Phase 3: Grouping ✅ COMPLETED
 
 Task groups and start profiles.
 
@@ -737,13 +737,13 @@ Task groups and start profiles.
 - Workspace trust concept (confirmation on first start)
 - autoStartGroup with trust confirmation
 
-### Phase 4: Advanced Output + Remote
+### Phase 4: Advanced Output + Remote ✅ COMPLETED (Problem Matcher; Remote/WSL deferred)
 
 - Problem matcher support (extract errors from task output)
 - ANSI color support (if using Output Window Pane fallback)
 - Remote/SSH/WSL basics (task execution on remote hosts)
 
-### Phase 5: Polish and Marketplace
+### Phase 5: Polish and Marketplace ✅ COMPLETED
 
 - Settings UI (visual configuration)
 - Keyboard shortcuts (Ctrl+Shift+B -> Default Build Group, tool window navigation)

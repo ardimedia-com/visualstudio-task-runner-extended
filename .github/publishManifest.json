@@ -1,11 +1,12 @@
 {
   "$schema": "http://json.schemastore.org/vsix-publish",
-  "categories": ["coding"],
   "identity": {
     "internalName": "TaskRunnerExtended"
   },
-  "overview": "README.md",
-  "pricing": "Free",
+  "overview": ".claude/overview.md",
+  "categories": ["coding", "build"],
   "publisher": "Ardimedia",
-  "repo": "https://github.com/ardimedia-com/visualstudio-task-runner-extended"
+  "pricing": "Free",
+  "repo": "https://github.com/ardimedia-com/visualstudio-task-runner-extended",
+  "tags": "task-runner, tasks-json, npm, pnpm, yarn, msbuild, docker-compose, dotnet-watch, compound-tasks, run-groups, background-tasks, process-management"
 }

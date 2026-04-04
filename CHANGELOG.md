@@ -4,12 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added (Phase 5: Polish)
+### Added (Phase 5: Polish and Marketplace)
 
 - **Empty State**: Helpful hints when no task sources are found (suggests tasks.json, package.json, .csproj)
 - **Toolbar Commands Wired**: Refresh (rescans), Stop All (stops all running tasks), Collapse All via ToolbarActionBus
 - **Bold Root Items**: "Available Configuration Files" and "Run Groups" displayed in bold
 - **Updated README**: Full feature list, usage guide, run groups documentation, technical details
+- **Extension Icons**: Custom icon (play button + task dots on blue gradient) in 6 sizes (16-256px)
+- **Marketplace Overview**: .claude/overview.md for VS Marketplace description
+- **Deploy Guide**: .claude/deploy.md with publishing checklist
+- **Publish Manifest**: Updated with tags (task-runner, npm, docker-compose, etc.) and categories (coding, build)
 
 ### Added (Phase 4: Advanced Output)
 
