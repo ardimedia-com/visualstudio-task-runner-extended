@@ -10,7 +10,7 @@
     <NoWarn>$(NoWarn);VSEXTPREVIEW_OUTPUTWINDOW</NoWarn>
 
     <!-- Package / Marketplace metadata -->
-    <Version>0.3.4</Version>
+    <Version>0.3.5</Version>
     <Authors>Ardimedia</Authors>
     <Company>Ardimedia</Company>
     <Product>Task Runner Extended</Product>
@@ -24,8 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.*" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.*" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.*" />
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.*" />
   </ItemGroup>
 
   <ItemGroup>
