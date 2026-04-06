@@ -18,6 +18,7 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     private string _icon;
     private string _statusIcon;
     private bool _isNodeSelected;
+    private bool _isExpanded = true;
     private bool _canStart;
     private bool _canStop;
     private Models.TaskStatus _status = Models.TaskStatus.Idle;
@@ -149,6 +150,14 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     /// <summary>Command to select this node (fired on right-click via vs:EventHandler).</summary>
     [DataMember]
     public IAsyncCommand? SelectCommand { get; set; }
+
+    /// <summary>Whether this node is expanded in the tree.</summary>
+    [DataMember]
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
 
     /// <summary>Whether this node is selected in the tree (custom selection, not WPF IsSelected).</summary>
     [DataMember]

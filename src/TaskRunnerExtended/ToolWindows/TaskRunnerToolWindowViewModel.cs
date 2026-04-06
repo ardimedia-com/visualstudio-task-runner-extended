@@ -69,6 +69,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         // Subscribe to toolbar actions (named methods for cleanup in Dispose)
         ToolbarActionBus.RefreshRequested += OnRefreshRequested;
         ToolbarActionBus.StopAllRequested += OnStopAllRequested;
+        ToolbarActionBus.CollapseAllRequested += OnCollapseAllRequested;
         ToolbarActionBus.TabChanged += OnTabChanged;
 
         _fileWatcher = new FileWatcherService(() =>
@@ -775,6 +776,23 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         });
     }
 
+    private void OnCollapseAllRequested()
+    {
+        foreach (var node in TreeItems)
+        {
+            CollapseRecursive(node);
+        }
+    }
+
+    private static void CollapseRecursive(TaskTreeNode node)
+    {
+        node.IsExpanded = false;
+        foreach (var child in node.Children)
+        {
+            CollapseRecursive(child);
+        }
+    }
+
     private void OnTabChanged(string tab)
     {
         _activeTab = tab;
@@ -789,6 +807,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         // Unsubscribe from static event bus to prevent leaks
         ToolbarActionBus.RefreshRequested -= OnRefreshRequested;
         ToolbarActionBus.StopAllRequested -= OnStopAllRequested;
+        ToolbarActionBus.CollapseAllRequested -= OnCollapseAllRequested;
         ToolbarActionBus.TabChanged -= OnTabChanged;
 
         // Unsubscribe from instance events

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.6] - 2026-04-06
+
+### Added
+
+- **Collapse All**: Toolbar button now collapses all tree view nodes (bound to `IsExpanded` property per node)
+
 ## [0.3.4] - 2026-04-06
 
 ### Added
