@@ -42,6 +42,9 @@ public class TaskItem
     /// <summary>Whether this is a compound task (has dependsOn, no own command).</summary>
     public bool IsCompound => DependsOn.Length > 0 && string.IsNullOrEmpty(Command);
 
+    /// <summary>Whether this task was auto-discovered (not from a config file).</summary>
+    public bool IsAutoDiscovered { get; init; }
+
     /// <summary>Error message if this task could not be parsed correctly. Non-null = not startable.</summary>
     public string? Error { get; init; }
 

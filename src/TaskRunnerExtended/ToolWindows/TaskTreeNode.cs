@@ -58,6 +58,18 @@ public class TaskTreeNode : NotifyPropertyChangedObject
         set => SetProperty(ref _icon, value);
     }
 
+    /// <summary>Badge icon shown next to the main icon (e.g. dotnet indicator for auto-discovered tasks).</summary>
+    [DataMember]
+    public string BadgeIcon { get; set; } = string.Empty;
+
+    /// <summary>Visibility of the badge icon.</summary>
+    [DataMember]
+    public string BadgeVisibility { get; set; } = "Collapsed";
+
+    /// <summary>Tooltip for the badge icon.</summary>
+    [DataMember]
+    public string BadgeTooltip { get; set; } = string.Empty;
+
     /// <summary>Status icon for tasks (play/spinner/error) — empty for non-task nodes.</summary>
     [DataMember]
     public string StatusIcon

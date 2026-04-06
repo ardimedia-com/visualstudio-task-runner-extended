@@ -55,19 +55,19 @@ public class CsprojDiscoverer : ITaskDiscoverer
                     var isWeb = sdkValue.Contains("Microsoft.NET.Sdk.Web", StringComparison.OrdinalIgnoreCase)
                              || sdkValue.Contains("Microsoft.NET.Sdk.BlazorWebAssembly", StringComparison.OrdinalIgnoreCase);
                     var isTest = IsTestProject(root, ns);
-
                     if (isWeb)
                     {
                         tasks.Add(new TaskItem
                         {
                             Label = "dotnet: watch",
                             Command = "dotnet",
-                            Args = ["watch", "--project", Path.GetFileName(csprojPath)],
+                            Args = ["watch"],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Background,
                             Source = source,
                             Metadata = "background",
+                            IsAutoDiscovered = true,
                         });
                     }
 
@@ -77,23 +77,25 @@ public class CsprojDiscoverer : ITaskDiscoverer
                         {
                             Label = "dotnet: test",
                             Command = "dotnet",
-                            Args = ["test", Path.GetFileName(csprojPath)],
+                            Args = ["test"],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Normal,
                             Source = source,
+                            IsAutoDiscovered = true,
                         });
 
                         tasks.Add(new TaskItem
                         {
-                            Label = "dotnet: test (watch)",
+                            Label = "dotnet: test watch",
                             Command = "dotnet",
-                            Args = ["watch", "test", "--project", Path.GetFileName(csprojPath)],
+                            Args = ["watch", "test"],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Background,
                             Source = source,
                             Metadata = "background",
+                            IsAutoDiscovered = true,
                         });
                     }
                 }

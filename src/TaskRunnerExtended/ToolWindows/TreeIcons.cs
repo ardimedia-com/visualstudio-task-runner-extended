@@ -38,6 +38,9 @@ public static class TreeIcons
     public const string GroupIdle = "KnownMonikers.Run";
     public const string GroupRunning = "KnownMonikers.Sync";
 
+    // Badge icons
+    public const string BadgeDotNet = "KnownMonikers.NuGet";
+
     /// <summary>
     /// Returns the icon string for a given source kind.
     /// </summary>

@@ -93,14 +93,15 @@ public class TaskRunner : IDisposable
 
         try
         {
-            // Get or create output channel (channels can only be created once per name)
-            var channelName = $"Task: {task.Label}";
-            if (!_outputChannels.TryGetValue(channelName, out var outputChannel))
+            // Get or create output channel (keyed by unique task key to avoid collisions)
+            var channelKey = taskKey;
+            if (!_outputChannels.TryGetValue(channelKey, out var outputChannel))
             {
+                var channelName = $"Task: {task.Label} [{task.Source.DisplayName}]";
                 outputChannel = await _extensibility.Views().Output
                     .CreateOutputChannelAsync(channelName, default)
                     .ConfigureAwait(false);
-                _outputChannels[channelName] = outputChannel;
+                _outputChannels[channelKey] = outputChannel;
             }
 
             // Show the output channel first

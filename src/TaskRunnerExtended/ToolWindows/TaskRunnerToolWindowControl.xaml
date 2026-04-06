@@ -42,8 +42,16 @@
                             <!-- Node icon -->
                             <vs:Image Source="{Binding Icon}"
                                       Width="16" Height="16"
-                                      Margin="0,0,4,0"
+                                      Margin="0,0,2,0"
                                       VerticalAlignment="Center" />
+
+                            <!-- Badge icon (e.g. dotnet indicator for auto-discovered tasks) -->
+                            <vs:Image Source="{Binding BadgeIcon}"
+                                      Width="10" Height="10"
+                                      Margin="0,0,4,0"
+                                      VerticalAlignment="Center"
+                                      Visibility="{Binding BadgeVisibility}"
+                                      ToolTipService.ToolTip="{Binding BadgeTooltip}" />
 
                             <!-- Task/Node name -->
                             <TextBlock Text="{Binding Name, Mode=OneWay}"

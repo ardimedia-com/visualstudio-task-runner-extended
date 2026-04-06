@@ -467,8 +467,6 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             return Task.CompletedTask;
         });
 
-        // Show empty root structure immediately
-        BuildEmptyTree();
     }
 
     [DataMember]
@@ -1171,6 +1169,9 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         AddToGroupCommand = AddToGroupCommand,
                         AddToGroupVisibility = "Visible",
                         SelectCommand = SelectNodeCommand,
+                        BadgeIcon = task.IsAutoDiscovered ? TreeIcons.BadgeDotNet : string.Empty,
+                        BadgeVisibility = task.IsAutoDiscovered ? "Visible" : "Collapsed",
+                        BadgeTooltip = task.IsAutoDiscovered ? "Auto-discovered .NET CLI task" : string.Empty,
                     };
                     sourceNode.Children.Add(taskNode);
 

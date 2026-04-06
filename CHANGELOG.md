@@ -2,15 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.2] - 2026-04-05
+## [0.3.4] - 2026-04-06
 
 ### Added
 
 - **Auto-discover dotnet CLI tasks**: `dotnet: watch` for web projects, `dotnet: test` and `dotnet: test (watch)` for test projects — auto-generated from .csproj SDK and PackageReferences
+- **Badge icon**: Auto-discovered .NET tasks show a small NuGet badge with tooltip "Auto-discovered .NET CLI task"
+- **Unique Output Window panes**: Pane names now include the source file (e.g. "Task: dotnet: test [MyApp.Tests.csproj]") to prevent collisions
 
 ### Fixed
 
 - **Resource leak on window close**: ViewModel now properly disposes TaskRunner, FileWatcher, and unsubscribes from static ToolbarActionBus events in Dispose()
+- **dotnet watch test failure**: Removed redundant `--project` argument that caused "Metadata file not found" errors with project references
+- **Serialization race condition**: Removed `BuildEmptyTree()` from constructor to prevent collection modification during Remote UI initialization
+- **Project configuration**: Removed legacy VSSDK properties (`IsVisualStudioExtension`, `VssdkCompatibleExtension`, `DeployExtension`) to match official VS Extensibility SDK samples
 
 ## [0.3.0] - 2026-04-04
 
