@@ -427,7 +427,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         var version = typeof(TaskRunnerToolWindowViewModel).Assembly.GetName().Version;
         var versionText = version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "unknown";
         ExtensionVersion = versionText;
-        FeedbackBody = $"**Extension Info**: Version: {versionText}\n\n";
+        FeedbackBody = $"**Extension Info**: Task Runner Extended, Version: {versionText}\n\n";
 
         // Feedback: handle type switching and submit
         SubmitFeedbackCommand = new((parameter, ct) =>
@@ -464,7 +464,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             FeedbackStatus = "Opened in browser.";
             var prefix = FeedbackType == "Bug" ? "BUG: " : "FEATURE: ";
             FeedbackTitle = prefix;
-            FeedbackBody = $"**Extension Info**: Version: {versionText}\n\n";
+            FeedbackBody = $"**Extension Info**: Task Runner Extended, Version: {versionText}\n\n";
             return Task.CompletedTask;
         });
 
