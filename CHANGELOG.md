@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.7] - 2026-04-07
+
+### Fixed
+
+- **Same-name task collision**: Tasks with identical labels (e.g. `dotnet: test watch` across multiple projects) now correctly start in their own project directory instead of always using the first match
+- **dotnet watch build**: Watch commands now run `dotnet build && dotnet watch` to build dependencies before watching — fixes CS0006 "Metadata file not found" on uncompiled projects
+
 ## [0.3.6] - 2026-04-06
 
 ### Added

@@ -60,8 +60,8 @@ public class CsprojDiscoverer : ITaskDiscoverer
                         tasks.Add(new TaskItem
                         {
                             Label = "dotnet: watch",
-                            Command = "dotnet",
-                            Args = ["watch"],
+                            Command = "dotnet build && dotnet watch",
+                            Args = [],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Background,
@@ -88,8 +88,8 @@ public class CsprojDiscoverer : ITaskDiscoverer
                         tasks.Add(new TaskItem
                         {
                             Label = "dotnet: test watch",
-                            Command = "dotnet",
-                            Args = ["watch", "test"],
+                            Command = "dotnet build && dotnet watch test",
+                            Args = [],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Background,

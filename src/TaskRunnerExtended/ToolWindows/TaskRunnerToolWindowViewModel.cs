@@ -1046,9 +1046,14 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         BuildGroupsTree();
     }
 
-    private TaskTreeNode? FindTaskNode(string name)
+    private TaskTreeNode? FindTaskNode(string nameOrKey)
     {
-        return _taskNodeMap.Values.FirstOrDefault(n => n.Name == name);
+        // Try exact key match first (Source.FilePath::Label)
+        if (_taskNodeMap.TryGetValue(nameOrKey, out var node))
+            return node;
+
+        // Fall back to name match (for groups and compound tasks that reference by label)
+        return _taskNodeMap.Values.FirstOrDefault(n => n.Name == nameOrKey);
     }
 
     /// <summary>
@@ -1178,10 +1183,11 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     }
 
                     var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
+                    var key = $"{task.Source.FilePath}::{task.Label}";
                     var taskNode = new TaskTreeNode(task.Label, task)
                     {
                         Metadata = metadata,
-                        GroupParam = task.Label,
+                        GroupParam = key,
                         StartStopVisibility = "Visible",
                         StartCommand = StartTaskCommand,
                         StopCommand = task.IsCompound ? null : StopTaskCommand,
@@ -1195,7 +1201,6 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     sourceNode.Children.Add(taskNode);
 
                     // Register in lookup map
-                    var key = $"{task.Source.FilePath}::{task.Label}";
                     _taskNodeMap[key] = taskNode;
                 }
 
