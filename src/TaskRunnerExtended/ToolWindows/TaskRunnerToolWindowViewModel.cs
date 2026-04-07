@@ -42,6 +42,8 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
     // Task number for display: key → sequential number
     private readonly Dictionary<string, int> _taskNumberMap = [];
+    // Secondary lookup: "label|sourceDisplayName" → task number (for group entries)
+    private readonly Dictionary<string, int> _taskNumberByLabelSource = new(StringComparer.OrdinalIgnoreCase);
     private int _nextTaskNumber;
 
     // Group entry nodes keyed by task label — updated when task status changes
@@ -427,6 +429,16 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             StatusText = $"Stopped tasks from {sourceName}";
         });
 
+        // Close output window for a task
+        CloseOutputCommand = new((parameter, ct) =>
+        {
+            if (parameter is not string taskKey || string.IsNullOrEmpty(taskKey)) return Task.CompletedTask;
+
+            _taskRunner.CloseOutput(taskKey);
+            StatusText = "Output closed.";
+            return Task.CompletedTask;
+        });
+
         // Prefill feedback body with version info
         var version = typeof(TaskRunnerToolWindowViewModel).Assembly.GetName().Version;
         var versionText = version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "unknown";
@@ -577,6 +589,9 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     public AsyncCommand StopAllInSourceCommand { get; }
 
     [DataMember]
+    public AsyncCommand CloseOutputCommand { get; }
+
+    [DataMember]
     public AsyncCommand SubmitFeedbackCommand { get; }
 
     private TaskTreeNode? _selectedNode;
@@ -653,6 +668,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         TreeItems.Clear();
         _taskNodeMap.Clear();
         _taskNumberMap.Clear();
+        _taskNumberByLabelSource.Clear();
         _nextTaskNumber = 0;
 
         try
@@ -751,6 +767,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _ = _taskRunner.StopAllAsync();
         _taskNodeMap.Clear();
         _taskNumberMap.Clear();
+        _taskNumberByLabelSource.Clear();
         _nextTaskNumber = 0;
         _groupEntryNodes.Clear();
         _workspaceFolder = string.Empty;
@@ -974,7 +991,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             var hasRunningTasks = false;
             foreach (var entry in group.Tasks.OrderBy(t => t.Order))
             {
-                var taskNode = FindTaskNode(entry.Task);
+                var taskNode = FindTaskNode(entry.Task, entry.Source);
                 var isRunning = taskNode is not null && taskNode.Status == Models.TaskStatus.Running;
                 if (isRunning) hasRunningTasks = true;
 
@@ -984,7 +1001,12 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     : TreeIcons.TaskIdle;
 
                 var taskKey = taskNode?.GroupParam ?? "";
-                var taskNum = _taskNumberMap.TryGetValue(taskKey, out var num) ? $"[{num}] " : "";
+                // Look up task number: try primary key, then label+source secondary lookup
+                var taskNum = _taskNumberMap.TryGetValue(taskKey, out var num)
+                    ? $"[{num}] "
+                    : _taskNumberByLabelSource.TryGetValue($"{entry.Task}|{entry.Source}", out num)
+                        ? $"[{num}] "
+                        : "";
                 var sourceHint = !string.IsNullOrEmpty(entry.Source)
                     ? $" ({entry.Source})"
                     : "";
@@ -998,6 +1020,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     CanStop = isRunning,
                     StartCommand = StartTaskCommand,
                     StopCommand = StopTaskCommand,
+                    CloseOutputCommand = CloseOutputCommand,
                     SelectCommand = SelectNodeCommand,
                     RemoveFromGroupCommand = RemoveFromGroupCommand,
                     RemoveFromGroupParam = $"{prefixedName}|{entry.Task}",
@@ -1065,8 +1088,27 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         if (_taskNodeMap.TryGetValue(nameOrKey, out var node))
             return node;
 
-        // Fall back to name match (for groups and compound tasks that reference by label)
-        return _taskNodeMap.Values.FirstOrDefault(n => n.Name == nameOrKey);
+        // Try display name match (Name includes [N] prefix + source)
+        var byName = _taskNodeMap.Values.FirstOrDefault(n => n.Name == nameOrKey);
+        if (byName is not null) return byName;
+
+        // Fall back to task label match (for group entries that store the original label)
+        return _taskNodeMap.Values.FirstOrDefault(n => n.Task?.Label == nameOrKey);
+    }
+
+    /// <summary>
+    /// Finds a task node by label + source display name (for group entry lookup).
+    /// </summary>
+    private TaskTreeNode? FindTaskNode(string taskLabel, string sourceDisplayName)
+    {
+        if (string.IsNullOrEmpty(sourceDisplayName))
+            return FindTaskNode(taskLabel);
+
+        return _taskNodeMap.Values.FirstOrDefault(n =>
+            n.Task is not null
+            && n.Task.Label.Equals(taskLabel, StringComparison.OrdinalIgnoreCase)
+            && n.Task.Source.DisplayName.Equals(sourceDisplayName, StringComparison.OrdinalIgnoreCase))
+            ?? FindTaskNode(taskLabel);
     }
 
     /// <summary>
@@ -1198,6 +1240,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     var key = $"{task.Source.FilePath}::{task.Label}";
                     var taskNum = ++_nextTaskNumber;
                     _taskNumberMap[key] = taskNum;
+                    _taskNumberByLabelSource[$"{task.Label}|{task.Source.DisplayName}"] = taskNum;
 
                     var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
                     var sourceName = Path.GetFileName(task.Source.FilePath);
@@ -1208,6 +1251,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         StartStopVisibility = "Visible",
                         StartCommand = StartTaskCommand,
                         StopCommand = task.IsCompound ? null : StopTaskCommand,
+                        CloseOutputCommand = CloseOutputCommand,
                         AddToGroupCommand = AddToGroupCommand,
                         AddToGroupVisibility = "Visible",
                         SelectCommand = SelectNodeCommand,

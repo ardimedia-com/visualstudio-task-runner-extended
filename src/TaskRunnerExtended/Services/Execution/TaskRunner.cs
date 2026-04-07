@@ -208,6 +208,18 @@ public class TaskRunner : IDisposable
     }
 
     /// <summary>
+    /// Closes (disposes) the output channel for a task. A new channel is created on next start.
+    /// </summary>
+    public void CloseOutput(string taskKey)
+    {
+        if (_outputChannels.TryGetValue(taskKey, out var channel))
+        {
+            channel.Dispose();
+            _outputChannels.Remove(taskKey);
+        }
+    }
+
+    /// <summary>
     /// Returns the exit code of a completed task, or null if still running.
     /// </summary>
     public int? GetExitCode(TaskItem task)

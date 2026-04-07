@@ -116,6 +116,10 @@
                                                                   CommandParameter="{Binding GroupParam}"
                                                                   IsEnabled="{Binding CanStop}"
                                                                   Visibility="{Binding StartStopVisibility}" />
+                                                        <MenuItem Header="Close Output Window"
+                                                                  Command="{Binding CloseOutputCommand}"
+                                                                  CommandParameter="{Binding GroupParam}"
+                                                                  Visibility="{Binding StartStopVisibility}" />
                                                         <MenuItem Header="Add to Group..."
                                                                   Command="{Binding AddToGroupCommand}"
                                                                   CommandParameter="{Binding Name}"

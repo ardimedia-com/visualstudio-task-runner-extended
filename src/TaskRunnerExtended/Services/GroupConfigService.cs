@@ -138,7 +138,10 @@ public class GroupConfigService
         var group = config.Groups.FirstOrDefault(g =>
             g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
 
-        group?.Tasks.RemoveAll(t => t.Source == source && t.Task == taskLabel);
+        if (string.IsNullOrEmpty(source))
+            group?.Tasks.RemoveAll(t => t.Task == taskLabel);
+        else
+            group?.Tasks.RemoveAll(t => t.Source == source && t.Task == taskLabel);
 
         SaveConfig(filePath, config);
     }

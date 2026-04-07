@@ -99,6 +99,10 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand? StopCommand { get; set; }
 
+    /// <summary>Command to close the output window for this task.</summary>
+    [DataMember]
+    public IAsyncCommand? CloseOutputCommand { get; set; }
+
     /// <summary>Command to add this task to a group.</summary>
     [DataMember]
     public IAsyncCommand? AddToGroupCommand { get; set; }
