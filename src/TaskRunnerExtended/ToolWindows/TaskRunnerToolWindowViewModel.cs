@@ -40,6 +40,10 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     // Lookup: tree node by task key (Source.FilePath::Label)
     private readonly Dictionary<string, TaskTreeNode> _taskNodeMap = [];
 
+    // Task number for display: key → sequential number
+    private readonly Dictionary<string, int> _taskNumberMap = [];
+    private int _nextTaskNumber;
+
     // Group entry nodes keyed by task label — updated when task status changes
     private readonly Dictionary<string, List<TaskTreeNode>> _groupEntryNodes = [];
 
@@ -161,7 +165,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 _selectedNode.IsNodeSelected = false;
             }
 
-            // Find and select new node by name
+            // Find and select new node by Name (unique since it includes [N] prefix)
             if (parameter is string name)
             {
                 _selectedNode = FindAllNodes().FirstOrDefault(n => n.Name == name);
@@ -648,6 +652,8 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         StatusText = "Scanning for task sources...";
         TreeItems.Clear();
         _taskNodeMap.Clear();
+        _taskNumberMap.Clear();
+        _nextTaskNumber = 0;
 
         try
         {
@@ -744,6 +750,8 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _fileWatcher.Stop();
         _ = _taskRunner.StopAllAsync();
         _taskNodeMap.Clear();
+        _taskNumberMap.Clear();
+        _nextTaskNumber = 0;
         _groupEntryNodes.Clear();
         _workspaceFolder = string.Empty;
         HasDetails = false;
@@ -975,10 +983,15 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     : taskNode.Status == Models.TaskStatus.Error ? TreeIcons.TaskError
                     : TreeIcons.TaskIdle;
 
-                var entryNode = new TaskTreeNode(entry.Task, icon)
+                var taskKey = taskNode?.GroupParam ?? "";
+                var taskNum = _taskNumberMap.TryGetValue(taskKey, out var num) ? $"[{num}] " : "";
+                var sourceHint = !string.IsNullOrEmpty(entry.Source)
+                    ? $" ({entry.Source})"
+                    : "";
+                var entryNode = new TaskTreeNode($"{taskNum}{entry.Task}{sourceHint}", icon)
                 {
                     Metadata = taskNode is null ? " (not found)" : $" ({entry.StartOrder})",
-                    GroupParam = entry.Task,
+                    GroupParam = taskKey,
                     StartStopVisibility = "Visible",
                     RemoveFromGroupVisibility = "Visible",
                     CanStart = taskNode is not null && !isRunning,
@@ -1182,9 +1195,13 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         continue;
                     }
 
-                    var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
                     var key = $"{task.Source.FilePath}::{task.Label}";
-                    var taskNode = new TaskTreeNode(task.Label, task)
+                    var taskNum = ++_nextTaskNumber;
+                    _taskNumberMap[key] = taskNum;
+
+                    var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
+                    var sourceName = Path.GetFileName(task.Source.FilePath);
+                    var taskNode = new TaskTreeNode($"[{taskNum}] {task.Label} ({sourceName})", task)
                     {
                         Metadata = metadata,
                         GroupParam = key,

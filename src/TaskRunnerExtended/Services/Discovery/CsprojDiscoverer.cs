@@ -76,8 +76,8 @@ public class CsprojDiscoverer : ITaskDiscoverer
                         tasks.Add(new TaskItem
                         {
                             Label = "dotnet: test",
-                            Command = "dotnet",
-                            Args = ["test"],
+                            Command = "dotnet build && dotnet test",
+                            Args = [],
                             WorkingDirectory = directory,
                             IsShell = true,
                             TaskType = Models.TaskType.Normal,

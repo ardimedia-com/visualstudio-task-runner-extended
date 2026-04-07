@@ -2,12 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.7] - 2026-04-07
+## [0.3.9] - 2026-04-07
+
+### Added
+
+- **Unique task numbering**: Each task gets a `[N]` prefix and source filename in the display name (e.g. `[1] dotnet: test (MyApp.Tests.csproj)`) for unique identification across tree, groups, and output panes
+- **Group entry source hint**: Run Group entries show source filename for disambiguation
+- **dotnet: test build-first**: `dotnet test` now runs `dotnet build && dotnet test` for consistency with watch commands
 
 ### Fixed
 
-- **Same-name task collision**: Tasks with identical labels (e.g. `dotnet: test watch` across multiple projects) now correctly start in their own project directory instead of always using the first match
+- **Same-name task collision**: Tasks with identical labels across multiple projects now correctly start in their own directory and show correct details when selected
 - **dotnet watch build**: Watch commands now run `dotnet build && dotnet watch` to build dependencies before watching — fixes CS0006 "Metadata file not found" on uncompiled projects
+- **Extension name in feedback**: Feedback body now includes "Task Runner Extended" in Extension Info
 
 ## [0.3.6] - 2026-04-06
 
