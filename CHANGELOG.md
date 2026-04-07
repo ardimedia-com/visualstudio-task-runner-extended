@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-04-07
+
+### Added
+
+- **TaskId system**: Stable, relative task identity (`{relativePath}::{label}`) based on git root. Replaces 5 different identifiers with one consistent key used everywhere.
+- **Task filter**: Filter TextBox above tree with ✕ clear button. Matches folder names and task names (case-insensitive). Folder match shows all children; task match shows task + parent.
+- **Close Output Window**: Context menu item to close/dispose a task's output pane
+- **Collapse/Expand toggle**: Toolbar button toggles between collapse all and expand all
+- **DotNet badge in groups**: Auto-discovered .NET tasks show the C# badge icon in Run Groups too
+
+### Fixed
+
+- **Group entry spinner icon**: Running status now correctly updates in Run Groups (keyed by TaskId, not label)
+- **Group entry CanStart/CanStop**: Start/Stop properly enabled/disabled on group entries based on running state
+- **Remove from Group**: Works reliably — passes source directly from config entry, no task lookup needed
+- **Close Output Window**: Uses TaskItem for internal key lookup (absolute path internally, TaskId externally)
+- **Empty group config cleanup**: Config file is deleted when all groups are removed (no more empty `{ groups: [] }`)
+- **Duplicate tree nodes**: Filter no longer causes duplicated root nodes
+- **Add to Group**: Uses TaskId (GroupParam) instead of display Name
+
+### Changed
+
+- **Renamed**: `BadgeIcon` → `DotNetIcon`, removed unused `StatusIcon` property
+- **Simplified FindTaskNode**: Single lookup by TaskId with label fallback for backward compat
+
 ## [0.3.9] - 2026-04-07
 
 ### Added

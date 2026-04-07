@@ -22,6 +22,7 @@ using TaskRunnerExtended.Services.Execution;
 public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 {
     private string _statusText = "No solution loaded";
+    private string _taskFilter = string.Empty;
     private string _workspaceFolder = string.Empty;
     private string _activeTab = "Tasks";
     private bool _showTasks = true;
@@ -37,16 +38,20 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     private readonly FileWatcherService _fileWatcher;
     private readonly GroupConfigService _groupConfigService = new();
 
-    // Lookup: tree node by task key (Source.FilePath::Label)
+    // Lookup: tree node by TaskId (relative path::label)
     private readonly Dictionary<string, TaskTreeNode> _taskNodeMap = [];
 
-    // Task number for display: key → sequential number
+    // Task number for display: TaskId → sequential number
     private readonly Dictionary<string, int> _taskNumberMap = [];
-    // Secondary lookup: "label|sourceDisplayName" → task number (for group entries)
-    private readonly Dictionary<string, int> _taskNumberByLabelSource = new(StringComparer.OrdinalIgnoreCase);
     private int _nextTaskNumber;
 
-    // Group entry nodes keyed by task label — updated when task status changes
+    // Root path for computing TaskId (git root if available, otherwise workspace)
+    private string _rootPath = string.Empty;
+
+    // Full unfiltered tree (backup for filtering)
+    private readonly List<TaskTreeNode> _unfilteredTreeItems = [];
+
+    // Group entry nodes keyed by TaskId — updated when task status changes
     private readonly Dictionary<string, List<TaskTreeNode>> _groupEntryNodes = [];
 
     public TaskRunnerToolWindowViewModel(VisualStudioExtensibility extensibility)
@@ -112,7 +117,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 else
                 {
                     node.Status = Models.TaskStatus.Running;
-                    UpdateGroupEntryStatus(node.Task.Label, Models.TaskStatus.Running);
+                    UpdateGroupEntryStatus(GetTaskId(node.Task), Models.TaskStatus.Running);
                     StatusText = $"Starting: {node.Task.Label}...";
 
                     var started = await _taskRunner.StartAsync(node.Task, _workspaceFolder).ConfigureAwait(false);
@@ -123,7 +128,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     if (!started)
                     {
                         node.Status = Models.TaskStatus.Error;
-                        UpdateGroupEntryStatus(node.Task.Label, Models.TaskStatus.Error);
+                        UpdateGroupEntryStatus(GetTaskId(node.Task), Models.TaskStatus.Error);
                     }
                 }
             }
@@ -150,7 +155,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 StatusText = $"Stopping: {node.Task.Label}...";
                 await _taskRunner.StopAsync(node.Task).ConfigureAwait(false);
                 node.Status = Models.TaskStatus.Idle;
-                UpdateGroupEntryStatus(node.Task.Label, Models.TaskStatus.Idle);
+                UpdateGroupEntryStatus(GetTaskId(node.Task), Models.TaskStatus.Idle);
                 StatusText = $"Stopped: {node.Task.Label}";
             }
             catch (Exception ex)
@@ -167,10 +172,11 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 _selectedNode.IsNodeSelected = false;
             }
 
-            // Find and select new node by Name (unique since it includes [N] prefix)
-            if (parameter is string name)
+            // Find and select node by GroupParam (TaskId) or Name
+            if (parameter is string param && !string.IsNullOrEmpty(param))
             {
-                _selectedNode = FindAllNodes().FirstOrDefault(n => n.Name == name);
+                _selectedNode = FindAllNodes().FirstOrDefault(n => n.GroupParam == param)
+                    ?? FindAllNodes().FirstOrDefault(n => n.Name == param);
                 if (_selectedNode is not null)
                 {
                     _selectedNode.IsNodeSelected = true;
@@ -211,6 +217,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
             _groupConfigService.AddTaskToGroup(_workspaceFolder, groupName, new Models.TaskGroupEntry
             {
+                Id = GetTaskId(node.Task),
                 Source = node.Task.Source.DisplayName,
                 Task = node.Task.Label,
             }, toShared);
@@ -235,11 +242,12 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
             foreach (var entry in group.Tasks.OrderBy(t => t.Order))
             {
-                var taskNode = FindTaskNode(entry.Task);
+                var entryId = entry.Id ?? $"{entry.Source}::{entry.Task}";
+                var taskNode = FindTaskNode(entryId);
                 if (taskNode?.Task is null) continue;
 
                 taskNode.Status = Models.TaskStatus.Running;
-                UpdateGroupEntryStatus(entry.Task, Models.TaskStatus.Running);
+                UpdateGroupEntryStatus(entryId, Models.TaskStatus.Running);
 
                 if (entry.StartOrder == "parallel")
                 {
@@ -251,7 +259,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     if (!started)
                     {
                         taskNode.Status = Models.TaskStatus.Error;
-                        UpdateGroupEntryStatus(entry.Task, Models.TaskStatus.Error);
+                        UpdateGroupEntryStatus(entry.Id ?? $"{entry.Source}::{entry.Task}", Models.TaskStatus.Error);
                         continue;
                     }
 
@@ -285,12 +293,13 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
             foreach (var entry in group.Tasks)
             {
-                var taskNode = FindTaskNode(entry.Task);
+                var entryId = entry.Id ?? $"{entry.Source}::{entry.Task}";
+                var taskNode = FindTaskNode(entryId);
                 if (taskNode?.Task is null) continue;
 
                 await _taskRunner.StopAsync(taskNode.Task).ConfigureAwait(false);
                 taskNode.Status = Models.TaskStatus.Idle;
-                UpdateGroupEntryStatus(entry.Task, Models.TaskStatus.Idle);
+                UpdateGroupEntryStatus(entryId, Models.TaskStatus.Idle);
             }
 
             StatusText = $"Stopped group: {groupName}";
@@ -344,20 +353,17 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             RefreshGroupsInTree();
         });
 
-        // Remove a task from a group — parameter format: "shared:groupName|taskLabel" or "local:groupName|taskLabel"
+        // Remove a task from a group — parameter format: "shared:groupName|source|taskLabel"
         RemoveFromGroupCommand = new((parameter, ct) =>
         {
             if (parameter is not string param || string.IsNullOrEmpty(_workspaceFolder)) return Task.CompletedTask;
 
-            var parts = param.Split('|', 2);
-            if (parts.Length != 2) return Task.CompletedTask;
+            var parts = param.Split('|', 3);
+            if (parts.Length < 2) return Task.CompletedTask;
 
             var (groupName, isShared) = ParseGroupParam(parts[0]);
-            var taskLabel = parts[1];
-
-            // Find the source for this task
-            var taskNode = FindTaskNode(taskLabel);
-            var source = taskNode?.Task?.Source.DisplayName ?? string.Empty;
+            var source = parts.Length == 3 ? parts[1] : string.Empty;
+            var taskLabel = parts.Length == 3 ? parts[2] : parts[1];
 
             _groupConfigService.RemoveTaskFromGroup(_workspaceFolder, groupName, source, taskLabel, isShared);
             StatusText = $"Removed '{taskLabel}' from group '{groupName}'";
@@ -401,7 +407,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             {
                 if (node.Task!.IsCompound || node.Task.IsError) continue;
                 node.Status = Models.TaskStatus.Running;
-                UpdateGroupEntryStatus(node.Task.Label, Models.TaskStatus.Running);
+                UpdateGroupEntryStatus(GetTaskId(node.Task), Models.TaskStatus.Running);
                 _ = _taskRunner.StartAsync(node.Task, _workspaceFolder);
             }
             StatusText = $"Started {sourceNodes.Count} task(s) from {sourceName}";
@@ -424,7 +430,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                 if (node.Task is null || !_taskRunner.IsRunning(node.Task)) continue;
                 await _taskRunner.StopAsync(node.Task).ConfigureAwait(false);
                 node.Status = Models.TaskStatus.Idle;
-                UpdateGroupEntryStatus(node.Task.Label, Models.TaskStatus.Idle);
+                UpdateGroupEntryStatus(GetTaskId(node.Task), Models.TaskStatus.Idle);
             }
             StatusText = $"Stopped tasks from {sourceName}";
         });
@@ -432,10 +438,24 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         // Close output window for a task
         CloseOutputCommand = new((parameter, ct) =>
         {
-            if (parameter is not string taskKey || string.IsNullOrEmpty(taskKey)) return Task.CompletedTask;
+            if (parameter is not string taskId || string.IsNullOrEmpty(taskId)) return Task.CompletedTask;
 
-            _taskRunner.CloseOutput(taskKey);
-            StatusText = "Output closed.";
+            var node = FindTaskNode(taskId);
+            if (node?.Task is not null)
+            {
+                _taskRunner.CloseOutput(node.Task);
+                StatusText = $"Output closed for: {node.Task.Label}";
+            }
+            else
+            {
+                StatusText = $"Task not found for output close: {taskId}";
+            }
+            return Task.CompletedTask;
+        });
+
+        ClearFilterCommand = new((_, _) =>
+        {
+            TaskFilter = string.Empty;
             return Task.CompletedTask;
         });
 
@@ -492,6 +512,23 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         get => _statusText;
         set => SetProperty(ref _statusText, value);
     }
+
+    [DataMember]
+    public string TaskFilter
+    {
+        get => _taskFilter;
+        set
+        {
+            if (SetProperty(ref _taskFilter, value))
+            {
+                RaiseNotifyPropertyChangedEvent(nameof(HasFilter));
+                ApplyFilter();
+            }
+        }
+    }
+
+    [DataMember]
+    public bool HasFilter => !string.IsNullOrEmpty(_taskFilter);
 
     [DataMember]
     public bool ShowTasks
@@ -592,6 +629,9 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     public AsyncCommand CloseOutputCommand { get; }
 
     [DataMember]
+    public AsyncCommand ClearFilterCommand { get; }
+
+    [DataMember]
     public AsyncCommand SubmitFeedbackCommand { get; }
 
     private TaskTreeNode? _selectedNode;
@@ -668,12 +708,12 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         TreeItems.Clear();
         _taskNodeMap.Clear();
         _taskNumberMap.Clear();
-        _taskNumberByLabelSource.Clear();
         _nextTaskNumber = 0;
 
         try
         {
             _workspaceFolder = await GetSolutionDirectoryAsync(cancellationToken).ConfigureAwait(false);
+            _rootPath = FindGitRoot(_workspaceFolder) ?? _workspaceFolder;
             if (string.IsNullOrEmpty(_workspaceFolder))
             {
                 BuildEmptyTree();
@@ -740,6 +780,14 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             // Run Groups
             BuildGroupsTree();
 
+            // Save unfiltered tree for filter restore
+            _unfilteredTreeItems.Clear();
+            _unfilteredTreeItems.AddRange(TreeItems);
+
+            // Re-apply filter if active
+            if (!string.IsNullOrEmpty(_taskFilter))
+                ApplyFilter();
+
             var taskCount = CountTasks(configFilesRoot);
             StatusText = taskCount > 0
                 ? $"Found {taskCount} task(s) from {configFilesRoot.Children.Count} source(s)."
@@ -767,7 +815,6 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         _ = _taskRunner.StopAllAsync();
         _taskNodeMap.Clear();
         _taskNumberMap.Clear();
-        _taskNumberByLabelSource.Clear();
         _nextTaskNumber = 0;
         _groupEntryNodes.Clear();
         _workspaceFolder = string.Empty;
@@ -801,21 +848,116 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         });
     }
 
+    private bool _isCollapsed;
+
     private void OnCollapseAllRequested()
     {
+        _isCollapsed = !_isCollapsed;
         foreach (var node in TreeItems)
         {
-            CollapseRecursive(node);
+            SetExpandedRecursive(node, !_isCollapsed);
         }
     }
 
-    private static void CollapseRecursive(TaskTreeNode node)
+    private static void SetExpandedRecursive(TaskTreeNode node, bool expanded)
     {
-        node.IsExpanded = false;
+        node.IsExpanded = expanded;
         foreach (var child in node.Children)
         {
-            CollapseRecursive(child);
+            SetExpandedRecursive(child, expanded);
         }
+    }
+
+    private void ApplyFilter()
+    {
+        var filter = _taskFilter?.Trim() ?? string.Empty;
+
+        TreeItems.Clear();
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            // Restore full tree, expand all
+            foreach (var item in _unfilteredTreeItems)
+            {
+                SetExpandedRecursive(item, true);
+                TreeItems.Add(item);
+            }
+            return;
+        }
+
+        // Build filtered tree: reuse leaf task nodes (for status updates),
+        // create shallow copies of branch nodes (to have different children lists)
+        foreach (var root in _unfilteredTreeItems)
+        {
+            var filtered = FilterNode(root, filter);
+            if (filtered is not null)
+                TreeItems.Add(filtered);
+        }
+    }
+
+    /// <summary>
+    /// Recursively filters the tree. Leaf task nodes are reused (same instance).
+    /// Branch nodes are shallow-copied with only matching children.
+    /// A folder matches if its name matches OR any child matches.
+    /// A task matches if its name contains the filter text.
+    /// </summary>
+    private static TaskTreeNode? FilterNode(TaskTreeNode node, string filter)
+    {
+        var nameMatches = node.Name.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+        // Leaf node (task): include only if name matches
+        if (node.Children.Count == 0)
+            return nameMatches ? node : null;
+
+        // Folder matches by name → include entire branch expanded
+        if (nameMatches)
+        {
+            var copy = CopyBranchNode(node);
+            foreach (var child in node.Children)
+                copy.Children.Add(child);
+            return copy;
+        }
+
+        // Folder doesn't match → include only if any child matches
+        var matchingChildren = new List<TaskTreeNode>();
+        foreach (var child in node.Children)
+        {
+            var filtered = FilterNode(child, filter);
+            if (filtered is not null)
+                matchingChildren.Add(filtered);
+        }
+
+        if (matchingChildren.Count == 0)
+            return null;
+
+        var branchCopy = CopyBranchNode(node);
+        foreach (var child in matchingChildren)
+            branchCopy.Children.Add(child);
+        return branchCopy;
+    }
+
+    /// <summary>
+    /// Creates a shallow copy of a branch node (preserving commands and properties, but empty children).
+    /// </summary>
+    private static TaskTreeNode CopyBranchNode(TaskTreeNode node)
+    {
+        return new TaskTreeNode(node.Name, node.Icon)
+        {
+            GroupParam = node.GroupParam,
+            FontWeight = node.FontWeight,
+            IsExpanded = true,
+            CanStart = node.CanStart,
+            CanStop = node.CanStop,
+            SelectCommand = node.SelectCommand,
+            StartCommand = node.StartCommand,
+            StopCommand = node.StopCommand,
+            StartStopVisibility = node.StartStopVisibility,
+            AddGroupCommand = node.AddGroupCommand,
+            AddGroupVisibility = node.AddGroupVisibility,
+            GroupManageVisibility = node.GroupManageVisibility,
+            DeleteCommand = node.DeleteCommand,
+            RenameCommand = node.RenameCommand,
+        };
     }
 
     private void OnTabChanged(string tab)
@@ -903,14 +1045,14 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
     private void OnTaskStatusChanged(TaskItem task, Models.TaskStatus status)
     {
-        var key = $"{task.Source.FilePath}::{task.Label}";
+        var key = GetTaskId(task);
         if (_taskNodeMap.TryGetValue(key, out var node))
         {
             node.Status = status;
         }
 
         // Update group entry nodes for this task
-        UpdateGroupEntryStatus(task.Label, status);
+        UpdateGroupEntryStatus(key, status);
 
         // Refresh groups to update group-level CanStart/CanStop
         RefreshGroupsInTree();
@@ -925,12 +1067,13 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
 
     private void BuildGroupsTree()
     {
-        // Remove existing groups root if present
+        // Remove existing groups root from both TreeItems and unfiltered backup
         var existingGroupsRoot = TreeItems.FirstOrDefault(n => n.Name == "Run Groups");
         if (existingGroupsRoot is not null)
         {
             TreeItems.Remove(existingGroupsRoot);
         }
+        _unfilteredTreeItems.RemoveAll(n => n.Name == "Run Groups");
 
         _groupEntryNodes.Clear();
 
@@ -967,6 +1110,7 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         groupsRoot.Children.Add(sharedNode);
         groupsRoot.Children.Add(localNode);
         TreeItems.Add(groupsRoot);
+        _unfilteredTreeItems.Add(groupsRoot);
     }
 
     private void BuildGroupNodes(List<Models.TaskGroup> groups, TaskTreeNode parentNode, string prefix)
@@ -991,7 +1135,9 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
             var hasRunningTasks = false;
             foreach (var entry in group.Tasks.OrderBy(t => t.Order))
             {
-                var taskNode = FindTaskNode(entry.Task, entry.Source);
+                // Resolve TaskId: use stored Id, or reconstruct from source::task for backward compat
+                var entryId = entry.Id ?? $"{entry.Source}::{entry.Task}";
+                var taskNode = FindTaskNode(entryId);
                 var isRunning = taskNode is not null && taskNode.Status == Models.TaskStatus.Running;
                 if (isRunning) hasRunningTasks = true;
 
@@ -1000,20 +1146,13 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     : taskNode.Status == Models.TaskStatus.Error ? TreeIcons.TaskError
                     : TreeIcons.TaskIdle;
 
-                var taskKey = taskNode?.GroupParam ?? "";
-                // Look up task number: try primary key, then label+source secondary lookup
-                var taskNum = _taskNumberMap.TryGetValue(taskKey, out var num)
-                    ? $"[{num}] "
-                    : _taskNumberByLabelSource.TryGetValue($"{entry.Task}|{entry.Source}", out num)
-                        ? $"[{num}] "
-                        : "";
-                var sourceHint = !string.IsNullOrEmpty(entry.Source)
-                    ? $" ({entry.Source})"
-                    : "";
+                var taskNum = _taskNumberMap.TryGetValue(entryId, out var num) ? $"[{num}] " : "";
+                var sourceHint = !string.IsNullOrEmpty(entry.Source) ? $" ({entry.Source})" : "";
+                var isAutoDiscovered = taskNode?.Task?.IsAutoDiscovered == true;
                 var entryNode = new TaskTreeNode($"{taskNum}{entry.Task}{sourceHint}", icon)
                 {
                     Metadata = taskNode is null ? " (not found)" : $" ({entry.StartOrder})",
-                    GroupParam = taskKey,
+                    GroupParam = entryId,
                     StartStopVisibility = "Visible",
                     RemoveFromGroupVisibility = "Visible",
                     CanStart = taskNode is not null && !isRunning,
@@ -1023,15 +1162,19 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                     CloseOutputCommand = CloseOutputCommand,
                     SelectCommand = SelectNodeCommand,
                     RemoveFromGroupCommand = RemoveFromGroupCommand,
-                    RemoveFromGroupParam = $"{prefixedName}|{entry.Task}",
+                    RemoveFromGroupParam = $"{prefixedName}|{entry.Source}|{entry.Task}",
+                    DotNetIcon = isAutoDiscovered ? TreeIcons.BadgeDotNet : string.Empty,
+                    DotNetIconVisibility = isAutoDiscovered ? "Visible" : "Collapsed",
+                    DotNetIconTooltip = isAutoDiscovered ? "Auto-discovered .NET CLI task" : string.Empty,
                 };
                 groupNode.Children.Add(entryNode);
 
-                // Track entry nodes so we can update their icons when status changes
-                if (!_groupEntryNodes.TryGetValue(entry.Task, out var entries))
+                // Track entry nodes by the actual TaskId (from found task node) for status updates
+                var statusKey = taskNode?.GroupParam ?? entryId;
+                if (!_groupEntryNodes.TryGetValue(statusKey, out var entries))
                 {
                     entries = [];
-                    _groupEntryNodes[entry.Task] = entries;
+                    _groupEntryNodes[statusKey] = entries;
                 }
                 entries.Add(entryNode);
             }
@@ -1043,9 +1186,9 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         }
     }
 
-    private void UpdateGroupEntryStatus(string taskLabel, Models.TaskStatus status)
+    private void UpdateGroupEntryStatus(string taskIdOrLabel, Models.TaskStatus status)
     {
-        if (!_groupEntryNodes.TryGetValue(taskLabel, out var entryNodes)) return;
+        if (!_groupEntryNodes.TryGetValue(taskIdOrLabel, out var entryNodes)) return;
 
         var newIcon = status switch
         {
@@ -1080,35 +1223,22 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
     private void RefreshGroupsInTree()
     {
         BuildGroupsTree();
-    }
 
-    private TaskTreeNode? FindTaskNode(string nameOrKey)
-    {
-        // Try exact key match first (Source.FilePath::Label)
-        if (_taskNodeMap.TryGetValue(nameOrKey, out var node))
-            return node;
-
-        // Try display name match (Name includes [N] prefix + source)
-        var byName = _taskNodeMap.Values.FirstOrDefault(n => n.Name == nameOrKey);
-        if (byName is not null) return byName;
-
-        // Fall back to task label match (for group entries that store the original label)
-        return _taskNodeMap.Values.FirstOrDefault(n => n.Task?.Label == nameOrKey);
+        if (!string.IsNullOrEmpty(_taskFilter))
+            ApplyFilter();
     }
 
     /// <summary>
-    /// Finds a task node by label + source display name (for group entry lookup).
+    /// Finds a task node by TaskId (primary) or label (fallback for backward compat).
     /// </summary>
-    private TaskTreeNode? FindTaskNode(string taskLabel, string sourceDisplayName)
+    private TaskTreeNode? FindTaskNode(string taskId)
     {
-        if (string.IsNullOrEmpty(sourceDisplayName))
-            return FindTaskNode(taskLabel);
+        // Exact TaskId match
+        if (_taskNodeMap.TryGetValue(taskId, out var node))
+            return node;
 
-        return _taskNodeMap.Values.FirstOrDefault(n =>
-            n.Task is not null
-            && n.Task.Label.Equals(taskLabel, StringComparison.OrdinalIgnoreCase)
-            && n.Task.Source.DisplayName.Equals(sourceDisplayName, StringComparison.OrdinalIgnoreCase))
-            ?? FindTaskNode(taskLabel);
+        // Fallback: match by label (for old group entries without Id)
+        return _taskNodeMap.Values.FirstOrDefault(n => n.Task?.Label == taskId);
     }
 
     /// <summary>
@@ -1237,17 +1367,16 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         continue;
                     }
 
-                    var key = $"{task.Source.FilePath}::{task.Label}";
+                    var taskId = GetTaskId(task);
                     var taskNum = ++_nextTaskNumber;
-                    _taskNumberMap[key] = taskNum;
-                    _taskNumberByLabelSource[$"{task.Label}|{task.Source.DisplayName}"] = taskNum;
+                    _taskNumberMap[taskId] = taskNum;
 
                     var metadata = task.Metadata is not null ? $" ({task.Metadata})" : string.Empty;
                     var sourceName = Path.GetFileName(task.Source.FilePath);
                     var taskNode = new TaskTreeNode($"[{taskNum}] {task.Label} ({sourceName})", task)
                     {
                         Metadata = metadata,
-                        GroupParam = key,
+                        GroupParam = taskId,
                         StartStopVisibility = "Visible",
                         StartCommand = StartTaskCommand,
                         StopCommand = task.IsCompound ? null : StopTaskCommand,
@@ -1255,14 +1384,14 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
                         AddToGroupCommand = AddToGroupCommand,
                         AddToGroupVisibility = "Visible",
                         SelectCommand = SelectNodeCommand,
-                        BadgeIcon = task.IsAutoDiscovered ? TreeIcons.BadgeDotNet : string.Empty,
-                        BadgeVisibility = task.IsAutoDiscovered ? "Visible" : "Collapsed",
-                        BadgeTooltip = task.IsAutoDiscovered ? "Auto-discovered .NET CLI task" : string.Empty,
+                        DotNetIcon = task.IsAutoDiscovered ? TreeIcons.BadgeDotNet : string.Empty,
+                        DotNetIconVisibility = task.IsAutoDiscovered ? "Visible" : "Collapsed",
+                        DotNetIconTooltip = task.IsAutoDiscovered ? "Auto-discovered .NET CLI task" : string.Empty,
                     };
                     sourceNode.Children.Add(taskNode);
 
                     // Register in lookup map
-                    _taskNodeMap[key] = taskNode;
+                    _taskNodeMap[taskId] = taskNode;
                 }
 
                 parentNode.Children.Add(sourceNode);
@@ -1285,6 +1414,36 @@ public class TaskRunnerToolWindowViewModel : ToolWindowViewModelBase
         }
 
         return filePath;
+    }
+
+    /// <summary>
+    /// Computes a stable, human-readable TaskId: "{relativePath}::{label}".
+    /// Relative to git root (if available) or workspace folder.
+    /// </summary>
+    private string GetTaskId(Models.TaskItem task)
+    {
+        var root = _rootPath;
+        if (string.IsNullOrEmpty(root))
+            return $"{Path.GetFileName(task.Source.FilePath)}::{task.Label}";
+
+        var relative = Path.GetRelativePath(root, task.Source.FilePath).Replace('\\', '/');
+        return $"{relative}::{task.Label}";
+    }
+
+    /// <summary>
+    /// Finds the git repository root by walking up from the given directory.
+    /// Returns null if no .git folder is found.
+    /// </summary>
+    private static string? FindGitRoot(string startDirectory)
+    {
+        var dir = startDirectory;
+        while (!string.IsNullOrEmpty(dir))
+        {
+            if (Directory.Exists(Path.Combine(dir, ".git")))
+                return dir;
+            dir = Directory.GetParent(dir)?.FullName;
+        }
+        return null;
     }
 
     private async Task<string> GetSolutionDirectoryAsync(CancellationToken cancellationToken)

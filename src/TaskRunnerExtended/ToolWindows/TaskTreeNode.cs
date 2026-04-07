@@ -16,7 +16,6 @@ using IAsyncCommand = Microsoft.VisualStudio.Extensibility.UI.IAsyncCommand;
 public class TaskTreeNode : NotifyPropertyChangedObject
 {
     private string _icon;
-    private string _statusIcon;
     private bool _isNodeSelected;
     private bool _isExpanded = true;
     private bool _canStart;
@@ -29,8 +28,8 @@ public class TaskTreeNode : NotifyPropertyChangedObject
     public TaskTreeNode(string name, string icon = "")
     {
         Name = name;
+        GroupParam = name; // Default GroupParam to Name for header nodes
         _icon = icon;
-        _statusIcon = string.Empty;
     }
 
     /// <summary>
@@ -41,7 +40,6 @@ public class TaskTreeNode : NotifyPropertyChangedObject
         Name = name;
         Task = task;
         _icon = TreeIcons.TaskIdle;
-        _statusIcon = TreeIcons.TaskIdle;
         _canStart = true;
         _canStop = false;
         IsTask = true;
@@ -59,25 +57,17 @@ public class TaskTreeNode : NotifyPropertyChangedObject
         set => SetProperty(ref _icon, value);
     }
 
-    /// <summary>Badge icon shown next to the main icon (e.g. dotnet indicator for auto-discovered tasks).</summary>
+    /// <summary>.NET icon shown next to the main icon for auto-discovered .NET CLI tasks.</summary>
     [DataMember]
-    public string BadgeIcon { get; set; } = string.Empty;
+    public string DotNetIcon { get; set; } = string.Empty;
 
-    /// <summary>Visibility of the badge icon.</summary>
+    /// <summary>Visibility of the .NET icon.</summary>
     [DataMember]
-    public string BadgeVisibility { get; set; } = "Collapsed";
+    public string DotNetIconVisibility { get; set; } = "Collapsed";
 
-    /// <summary>Tooltip for the badge icon.</summary>
+    /// <summary>Tooltip for the .NET icon.</summary>
     [DataMember]
-    public string BadgeTooltip { get; set; } = string.Empty;
-
-    /// <summary>Status icon for tasks (play/spinner/error) — empty for non-task nodes.</summary>
-    [DataMember]
-    public string StatusIcon
-    {
-        get => _statusIcon;
-        set => SetProperty(ref _statusIcon, value);
-    }
+    public string DotNetIconTooltip { get; set; } = string.Empty;
 
     /// <summary>Whether this is a runnable task node (true) or a header node (false).</summary>
     [DataMember]
@@ -208,7 +198,6 @@ public class TaskTreeNode : NotifyPropertyChangedObject
                 _ => TreeIcons.TaskIdle,
             };
             Icon = newIcon;
-            StatusIcon = newIcon;
             CanStart = value != Models.TaskStatus.Running;
             CanStop = value == Models.TaskStatus.Running;
         }

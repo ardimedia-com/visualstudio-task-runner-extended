@@ -10,7 +10,7 @@
     <NoWarn>$(NoWarn);VSEXTPREVIEW_OUTPUTWINDOW</NoWarn>
 
     <!-- Package / Marketplace metadata -->
-    <Version>0.3.9</Version>
+    <Version>0.4.0</Version>
     <Authors>Ardimedia</Authors>
     <Company>Ardimedia</Company>
     <Product>Task Runner Extended</Product>
@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Images\TaskRunnerExtended.*.png" />
+    <EmbeddedResource Include="Images\DotNetCore.*.png" />
     <EmbeddedResource Include="Images\TreeIcons\*.png" />
   </ItemGroup>
 

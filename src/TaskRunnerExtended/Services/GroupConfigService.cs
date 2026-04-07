@@ -178,6 +178,13 @@ public class GroupConfigService
     {
         try
         {
+            // Delete file if no groups remain
+            if (config.Groups.Count == 0)
+            {
+                if (File.Exists(filePath)) File.Delete(filePath);
+                return;
+            }
+
             var json = JsonSerializer.Serialize(config, JsonOptions);
 
             // Atomic write: write to temp file, then move

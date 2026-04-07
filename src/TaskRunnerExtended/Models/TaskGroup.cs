@@ -15,10 +15,13 @@ public class TaskGroup
 /// </summary>
 public class TaskGroupEntry
 {
-    /// <summary>Relative path to the source file (e.g., ".vscode/tasks.json", "package.json").</summary>
+    /// <summary>Unique task identifier: "{relativePath}::{label}". Primary lookup key.</summary>
+    public string? Id { get; set; }
+
+    /// <summary>Relative path to the source file (e.g., ".vscode/tasks.json", "package.json"). Legacy, used for backward compat.</summary>
     public required string Source { get; set; }
 
-    /// <summary>Task label within that source.</summary>
+    /// <summary>Task label within that source. Legacy, used for backward compat.</summary>
     public required string Task { get; set; }
 
     /// <summary>"parallel" or "sequence".</summary>

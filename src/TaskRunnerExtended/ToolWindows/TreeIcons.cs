@@ -39,7 +39,7 @@ public static class TreeIcons
     public const string GroupRunning = "KnownMonikers.Sync";
 
     // Badge icons
-    public const string BadgeDotNet = "KnownMonikers.NuGet";
+    public const string BadgeDotNet = "KnownMonikers.CSProjectNode";
 
     /// <summary>
     /// Returns the icon string for a given source kind.
